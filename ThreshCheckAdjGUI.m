@@ -138,11 +138,12 @@ set(handles.outputFEC, 'string', num2str(eyetrace(startframe)))
 
 set(handles.currentFileLabel, 'string', file)
 
+set(handles.FrameSlider, 'min', 1);
+set(handles.FrameSlider, 'max', length(eyetrace));
+set(handles.FrameSlider, 'Value', startframe);
+set(handles.FrameSlider, 'SliderStep', [1/length(eyetrace) 10/length(eyetrace)])
+
 disp('GUI setup complete')
-
-
-
-
 
 
 
@@ -167,6 +168,33 @@ function FrameSlider_Callback(hObject, eventdata, handles)
 % hObject    handle to FrameSlider (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+% update the displayed frame number
+frameSelected = int32(get(handles.FrameSlider, 'Value'));
+set(handles.FrameNumber, 'string', num2str(frameSelected))
+
+% update the displayed point on the eyetrace plot
+axes(handles.eyelidtracePlot)
+eyetrace = getappdata(0, 'eyetrace');
+a = getappdata(0, 'framePointer');
+delete(a)
+hold on
+a = scatter([frameSelected], eyetrace(frameSelected), 'MarkerEdgeColor', [0 0 1]);
+setappdata(0, 'framePointer', a)
+
+% update the frames shown
+rawFrames = getappdata(0, 'rawFrames');
+axes(handles.rawFrame)
+imshow(rawFrames{frameSelected,1})
+
+procFrames = getappdata(0, 'procFrames');
+axes(handles.MaskedFilteredThreshdFrame)
+imshow(procFrames{frameSelected,1})
+
+% update displayed FEC value
+set(handles.outputFEC, 'string', num2str(eyetrace(frameSelected)))
+
+
 
 % Hints: get(hObject,'Value') returns position of slider
 %        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
