@@ -68,6 +68,7 @@ while strcmpi(file(end-8:end), 'calib.mp4')==0
     disp('Please select a calibration file (must end in calib.mp4)')
     file = uigetfile('.mp4', 'Please select calibration file.');
 end
+setappdata(0, 'filename', file)
 
 disp('Loading file')
 [data,metadata]=loadCompressed(file);
@@ -75,9 +76,14 @@ disp('Loading file')
 % using it to derive the calibration data
 setappdata(0, 'calibData', data)
 setappdata(0, 'calibMetadata', metadata)
+setappdata(0, 'currentData', data)
+setappdata(0, 'currentMetadata', metadata)
 
 w = 1; % how many pixels around the current pixel should be filtered together
+setappdata(0, 'w', w) % saving this now in case it gets changed at a later date as it will apply throughout the code and I don't want it to be set in multiple locations
+
 thresh=metadata.cam.thresh; % just set up using the threshold from calibration
+setappdata(0, 'thresh', thresh) % saving this to hidden figure as it will be used in a later function
 
 [m,n,c,f]=size(data);
 
@@ -99,31 +105,10 @@ setappdata(0, 'eyetrace', eyetrace)
 disp('Initializing GUI display')
 
 startframe = 1; % making this a variable in case I want to change it later
+setappdata(0, 'startframe', startframe)
 
-axes(handles.rawFrame)
-imshow(rawFrames{startframe,1})
-
-axes(handles.MaskedFilteredThreshdFrame)
-imshow(procFrames{startframe,1})
-
-axes(handles.eyelidtracePlot)
-plot(eyetrace')
-hold on
-a = scatter([startframe], eyetrace(startframe), 'MarkerEdgeColor', [0 0 1]);
-setappdata(0, 'framePointer', a)
-
-set(handles.FrameNumber, 'string', num2str(startframe))
-
-set(handles.currentThresholdDisplay, 'string', num2str(thresh))
-
-set(handles.outputFEC, 'string', num2str(eyetrace(startframe)))
-
-set(handles.currentFileLabel, 'string', file)
-
-set(handles.FrameSlider, 'min', 1);
-set(handles.FrameSlider, 'max', length(eyetrace));
-set(handles.FrameSlider, 'Value', startframe);
-set(handles.FrameSlider, 'SliderStep', [1/length(eyetrace) 10/length(eyetrace)])
+initThreshCheckAdjGUIDisplay(startframe, handles, rawFrames, procFrames, ...
+    eyetrace, thresh, file)
 
 disp('GUI setup complete')
 
@@ -275,6 +260,41 @@ function ApplyThresholdButton_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 newThresh = str2double(get(handles.newThresholdEditTextBox, 'string'));
+setappdata(0, 'thresh', newThresh) % update hidden figure threshold info
+
+% fetch necessary variables from hidden figure, etc
+calibData = getappdata(0, 'calibData');
+calibMetadata = getappdata(0, 'calibMetadata');
+w = getappdata(0, 'w');
+[m,n,c,f]=size(calibData);
+
+disp('Processing calibration file')
+% for calibration processing, have to do one run through without specific calibration data
+calib=processCalibTrial(calibData, calibMetadata, newThresh, f, w); % this line gets the calibration values for the day
+setappdata(0,'calib',calib) % update hidden figure calib info
+
+% fetch data and metadata for the video currently being examined
+data = getappdata(0, 'currentData');
+metadata = getappdata(0, 'currentMetadata');
+
+% apply new calibration parameters to video
+[eyetrace, rawFrames, procFrames]=processGivenTrial(data, metadata, newThresh, calib, f, w);
+
+% update the hidden figure's frames and eyetrace records
+setappdata(0, 'rawFrames', rawFrames)
+setappdata(0, 'procFrames', procFrames)
+setappdata(0, 'eyetrace', eyetrace)
+
+% Re-initialize the GUI
+disp('Initializing GUI display')
+
+startframe = getappdata(0, 'startframe');
+
+file = getappdata(0, 'filename');
+initThreshCheckAdjGUIDisplay(startframe, handles, rawFrames, procFrames, ...
+    eyetrace, newThresh, file)
+
+disp('GUI setup complete')
 
 
 
