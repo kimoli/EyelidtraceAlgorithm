@@ -46,40 +46,6 @@ for i=1:f
     eyetrace(i)=(tr-calib.offset(1))./calib.scale;
 end
 
-
-%% show a frame from intermedate in baseline, at 50% eyelid closure, and at full eyelid closure
-figure
-subplot(4,2,1)
-imshow(rawFrames{20,1})
-title('fr 20')
-subplot(4,2,2)
-imshow(filtThreshFrames{20,1})
-title('fr 20')
-
-subplot(4,2,3)
-imshow(rawFrames{54,1})
-title('fr 54')
-subplot(4,2,4)
-imshow(filtThreshFrames{54,1})
-title('fr 54')
-
-subplot(4,2,5)
-imshow(rawFrames{59,1})
-title('fr 59 - experimenter says closed')
-subplot(4,2,6)
-imshow(filtThreshFrames{59,1})
-title('fr 59')
-
-subplot(4,2,7)
-imshow(rawFrames{84,1})
-title('fr 84 - algo says closed')
-subplot(4,2,8)
-imshow(filtThreshFrames{84,1})
-title('fr 84')
-
-% based on these frames, might be reasonable to show frames 50-60 for
-% viewer appraisal
-
 %% try showing frames 50:2:60 for viewer to appraise
 figure
 subplot(3,6,1)
@@ -128,7 +94,7 @@ plot([50:60], eyetrace(50:60))
 
 
 %% try to use a different threshold and see what looks different
-thresh = 0.5;
+thresh = 0.55;
 
 calib.scale=1;
 calib.offset=[0; 0];
@@ -207,3 +173,6 @@ plot([54 54], [0 1], 'Color', [0 0 0], 'LineStyle', ':')
 plot([56 56], [0 1], 'Color', [0 0 0], 'LineStyle', ':')
 plot([58 58], [0 1], 'Color', [0 0 0], 'LineStyle', ':')
 plot([50:60], eyetrace2(50:60))
+
+
+
