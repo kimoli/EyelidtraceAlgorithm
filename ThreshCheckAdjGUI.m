@@ -218,6 +218,34 @@ function FrameNumber_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+% update slider position
+frameSelected = str2double(get(hObject, 'string'));
+%disp(frameSelected)
+set(handles.FrameSlider, 'Value', frameSelected);
+
+% update the displayed point on the eyetrace plot
+axes(handles.eyelidtracePlot)
+eyetrace = getappdata(0, 'eyetrace');
+a = getappdata(0, 'framePointer');
+delete(a)
+hold on
+a = scatter([frameSelected], eyetrace(frameSelected), 'MarkerEdgeColor', [0 0 1]);
+setappdata(0, 'framePointer', a)
+
+% update the frames shown
+rawFrames = getappdata(0, 'rawFrames');
+axes(handles.rawFrame)
+imshow(rawFrames{frameSelected,1})
+
+procFrames = getappdata(0, 'procFrames');
+axes(handles.MaskedFilteredThreshdFrame)
+imshow(procFrames{frameSelected,1})
+
+% update displayed FEC value
+set(handles.outputFEC, 'string', num2str(eyetrace(frameSelected)))
+
+
+
 % Hints: get(hObject,'String') returns contents of FrameNumber as text
 %        str2double(get(hObject,'String')) returns contents of FrameNumber as a double
 
