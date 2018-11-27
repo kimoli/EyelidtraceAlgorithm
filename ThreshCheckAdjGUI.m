@@ -25,7 +25,7 @@ function varargout = ThreshCheckAdjGUI(varargin)
 
 % Edit the above text to modify the response to help ThreshCheckAdjGUI
 
-% Last Modified by GUIDE v2.5 27-Nov-2018 11:14:12
+% Last Modified by GUIDE v2.5 27-Nov-2018 17:13:00
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -83,7 +83,7 @@ w = 1; % how many pixels around the current pixel should be filtered together
 setappdata(0, 'w', w) % saving this now in case it gets changed at a later date as it will apply throughout the code and I don't want it to be set in multiple locations
 
 thresh=metadata.cam.thresh; % just set up using the threshold from calibration
-setappdata(0, 'thresh', thresh) % saving this to hidden figure as it will be used in a later function
+setappdata(0, 'originalThresh', thresh) % saving this to hidden figure as it might be useful to revert back to later
 
 [m,n,c,f]=size(data);
 
@@ -260,7 +260,6 @@ function ApplyThresholdButton_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 newThresh = str2double(get(handles.newThresholdEditTextBox, 'string'));
-setappdata(0, 'thresh', newThresh) % update hidden figure threshold info
 
 % fetch necessary variables from hidden figure, etc
 calibData = getappdata(0, 'calibData');
@@ -303,3 +302,86 @@ function loadFileButton_Callback(hObject, eventdata, handles)
 % hObject    handle to loadFileButton (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+
+% have the user select a video file to examine
+disp('Please select a video file')
+file = uigetfile('.mp4', 'Please select a video file.');
+while strcmpi(file(end-3:end), '.mp4')==0
+    disp('Please select a video file (must end in .mp4)')
+    file = uigetfile('.mp4', 'Please select a video file.');
+end
+setappdata(0, 'filename', file)
+
+disp('Loading file')
+[data,metadata]=loadCompressed(file);
+% save trial information to the hidden figure so you can keep
+% using it if you change the threshold later
+setappdata(0, 'currentData', data)
+setappdata(0, 'currentMetadata', metadata)
+
+w = getappdata(0, 'w'); % how many pixels around the current pixel should be filtered together
+
+thresh=str2double(get(handles.currentThresholdDisplay, 'string')); % use the same threshold as was being used for the previous video
+
+[m,n,c,f]=size(data);
+
+calib=getappdata(0, 'calib'); % use the established calibration information
+
+% run though eyetrace value extraction
+[eyetrace, rawFrames, procFrames]=processGivenTrial(data, metadata, thresh, calib, f, w);
+
+% save the frames and the eyetrace to the hidden figure
+setappdata(0, 'rawFrames', rawFrames)
+setappdata(0, 'procFrames', procFrames)
+setappdata(0, 'eyetrace', eyetrace)
+
+% start up the rest of the GUI
+disp('Initializing GUI display')
+
+startframe = getappdata(0, 'startframe');
+
+initThreshCheckAdjGUIDisplay(startframe, handles, rawFrames, procFrames, ...
+    eyetrace, thresh, file)
+
+disp('GUI setup complete')
+
+
+% --- Executes on button press in revertThresholdButton.
+function revertThresholdButton_Callback(hObject, eventdata, handles)
+% hObject    handle to revertThresholdButton (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+originalThresh = getappdata(0, 'originalThresh');
+set(handles.currentThresholdDisplay, 'string', num2str(originalThresh));
+
+% get info from the hidden figure
+data = getappdata(0, 'currentData');
+metadata = getappdata(0, 'currentMetadata');
+w = getappdata(0, 'w'); % how many pixels around the current pixel should be filtered together
+
+thresh=str2double(get(handles.currentThresholdDisplay, 'string')); % use the same threshold as was being used for the previous video
+
+[m,n,c,f]=size(data);
+
+calib=getappdata(0, 'calib'); % use the established calibration information
+
+% run though eyetrace value extraction
+[eyetrace, rawFrames, procFrames]=processGivenTrial(data, metadata, thresh, calib, f, w);
+
+% save the frames and the eyetrace to the hidden figure
+setappdata(0, 'rawFrames', rawFrames)
+setappdata(0, 'procFrames', procFrames)
+setappdata(0, 'eyetrace', eyetrace)
+
+% start up the rest of the GUI
+disp('Initializing GUI display')
+
+startframe = getappdata(0, 'startframe');
+file = getappdata(0, 'filename');
+
+initThreshCheckAdjGUIDisplay(startframe, handles, rawFrames, procFrames, ...
+    eyetrace, thresh, file)
+
+disp('GUI setup complete')
