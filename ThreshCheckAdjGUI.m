@@ -71,6 +71,10 @@ end
 
 disp('Loading file')
 [data,metadata]=loadCompressed(file);
+% save calibration trial information to the hidden figure so you can keep
+% using it to derive the calibration data
+setappdata(0, 'calibData', data)
+setappdata(0, 'calibMetadata', metadata)
 
 w = 1; % how many pixels around the current pixel should be filtered together
 thresh=metadata.cam.thresh; % just set up using the threshold from calibration
@@ -79,34 +83,12 @@ thresh=metadata.cam.thresh; % just set up using the threshold from calibration
 
 disp('Processing calibration file')
 % for calibration processing, have to do one run through without specific calibration data
-calib.scale=1;
-calib.offset=[0; 0];
 
-eyetrace=zeros(1,length(f));
-for i=1:f
-    wholeframe=data(:,:,1,i);   % make it a grayscale image in case it's not (this assumes all color channels have roughtly the same value)
-    binimage=medfilt2(wholeframe,[w w]) > thresh*256;
-    eyeimage=binimage.*metadata.cam.mask;
-    tr=sum(eyeimage(:));
-    eyetrace(i)=(tr-calib.offset(1))./calib.scale;
-end
-
-calib=getcalib(eyetrace); % this line gets the calibration values for the day
+calib=processCalibTrial(data, metadata, thresh, f, w); % this line gets the calibration values for the day
 setappdata(0,'calib',calib) % save calib to the hidden figure so that it is accessible to all parts of the GUI
 
 % second run though eyetrace value extraction, same video but now calibrated
-eyetrace=zeros(1,length(f));
-rawFrames = {};
-procFrames = {};
-for i=1:f
-    wholeframe=data(:,:,1,i);   % make it a grayscale image in case it's not (this assumes all color channels have roughtly the same value)
-    rawFrames{i,1} = wholeframe;
-    binimage=medfilt2(wholeframe,[w w]) > thresh*256;
-    eyeimage=binimage.*metadata.cam.mask;
-    procFrames{i,1} = eyeimage;
-    tr=sum(eyeimage(:));
-    eyetrace(i)=(tr-calib.offset(1))./calib.scale;
-end
+[eyetrace, rawFrames, procFrames]=processGivenTrial(data, metadata, thresh, calib, f, w);
 
 % save the frames and the eyetrace to the hidden figure
 setappdata(0, 'rawFrames', rawFrames)
@@ -291,6 +273,9 @@ function ApplyThresholdButton_Callback(hObject, eventdata, handles)
 % hObject    handle to ApplyThresholdButton (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+newThresh = str2double(get(handles.newThresholdEditTextBox, 'string'));
+
 
 
 % --- Executes on button press in loadFileButton.
