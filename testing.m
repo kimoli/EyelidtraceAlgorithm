@@ -128,7 +128,7 @@ plot([50:60], eyetrace(50:60))
 
 
 %% try to use a different threshold and see what looks different
-thresh = 0.48;
+thresh = 0.5;
 
 calib.scale=1;
 calib.offset=[0; 0];
