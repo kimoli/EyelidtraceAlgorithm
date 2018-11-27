@@ -6,12 +6,6 @@ function [eyetrace,time]=vid2eyetrace(data,metadata,varargin)
 % 3. THRESH to override value in metadata
 % 4. WINDOW SIZE (in pixels) for median filter of frame before converting to binary image. 
 % 5. CALIB struct with fields of SCALE and OFFSET if you want the data to be returned normalized by full eyelid closure.
-% 6. Algorithm to use for measuring eyelid as string, either 'area' (default) or 'pos'. Position mode will return a 2xn matrix
-% corresponding to upper and lower eyelid position traces. Note that
-% uncalibrated upper and lower traces for 'pos' mode come out inverted
-% (upper on bottom) because they are in pixel units and vertical pixels
-% start at the top. This is corrected for in the calibration routine using
-% the GETCALIB function.
 
 
 if nargin > 2 && ~isempty(varargin{1})
