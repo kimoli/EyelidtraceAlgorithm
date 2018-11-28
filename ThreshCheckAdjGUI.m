@@ -166,6 +166,15 @@ imshow(procFrames{frameSelected,1})
 % update displayed FEC value
 set(handles.outputFEC, 'string', num2str(eyetrace(frameSelected)))
 
+% put the ROD patch(es) on the top layer if it exists
+rodPatches = getappdata(0, 'rodPatches');
+if ~isempty(rodPatches)
+    for rp = 1:length(rodPatches)
+        XY = rodPatches{rp,1};
+        patch(XY(:,1),XY(:,2),'g','FaceColor','none','EdgeColor','g','Tag','rodpatch');
+    end
+end
+
 
 
 % Hints: get(hObject,'Value') returns position of slider
