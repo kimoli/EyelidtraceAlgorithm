@@ -11,6 +11,12 @@ for i=1:f
     procFrames{i,1} = eyeimage;
     tr=sum(eyeimage(:));
     eyetrace(i)=(tr-calib.offset(1))./calib.scale;
+    
+    % squash values greater than 1 to 1 because FEC should not be sensitive
+    % to different eyelid closednesses
+    if eyetrace(i)>1
+        eyetrace(i) = 1;
+    end
 end
 
 end
