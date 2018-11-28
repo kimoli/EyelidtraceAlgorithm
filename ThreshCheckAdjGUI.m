@@ -25,7 +25,7 @@ function varargout = ThreshCheckAdjGUI(varargin)
 
 % Edit the above text to modify the response to help ThreshCheckAdjGUI
 
-% Last Modified by GUIDE v2.5 27-Nov-2018 17:13:00
+% Last Modified by GUIDE v2.5 28-Nov-2018 16:19:29
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -385,3 +385,69 @@ initThreshCheckAdjGUIDisplay(startframe, handles, rawFrames, procFrames, ...
     eyetrace, thresh, file)
 
 disp('GUI setup complete')
+
+
+% --- Executes on button press in newMaxFECFrameButton.
+function newMaxFECFrameButton_Callback(hObject, eventdata, handles)
+% hObject    handle to newMaxFECFrameButton (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+file = get(handles.currentFileLabel, 'string');
+if strcmpi(file(end-8:end), 'calib.mp4')
+    % get the current frame
+    thisFrame = str2double(get(handles.FrameNumber, 'string'));
+    
+    % get the current threshold
+    thresh = str2double(get(handles.currentThresholdDisplay, 'string'));
+    
+    % fetch necessary variables from hidden figure, etc
+    calibData = getappdata(0, 'calibData');
+    calibMetadata = getappdata(0, 'calibMetadata');
+    w = getappdata(0, 'w');
+    [m,n,c,f]=size(calibData);
+    
+    disp('Processing calibration file')
+    % for calibration processing, have to do one run through without specific calibration data
+    % for calibration processing, have to do one run through without specific calibration data
+    calib.scale=1;
+    calib.offset=[0; 0];
+    
+    eyetrace=zeros(1,length(f));
+    for i=1:f
+        wholeframe=calibData(:,:,1,i);   % make it a grayscale image in case it's not (this assumes all color channels have roughtly the same value)
+        binimage=medfilt2(wholeframe,[w w]) > thresh*256;
+        eyeimage=binimage.*calibMetadata.cam.mask;
+        tr=sum(eyeimage(:));
+        eyetrace(i)=(tr-calib.offset(1))./calib.scale;
+    end
+
+    
+    calib.offset=mean(eyetrace(1:40));
+    maxclosure=eyetrace(thisFrame);
+    calib.scale=maxclosure-calib.offset;
+    
+    setappdata(0,'calib',calib) % update hidden figure calib info
+    
+    % apply new calibration parameters to video
+    [eyetrace, rawFrames, procFrames]=processGivenTrial(calibData, calibMetadata, thresh, calib, f, w);
+    
+    % update the hidden figure's frames and eyetrace records
+    setappdata(0, 'rawFrames', rawFrames)
+    setappdata(0, 'procFrames', procFrames)
+    setappdata(0, 'eyetrace', eyetrace)
+    
+    % Re-initialize the GUI
+    disp('Initializing GUI display')
+    
+    startframe = getappdata(0, 'startframe');
+    
+    initThreshCheckAdjGUIDisplay(startframe, handles, rawFrames, procFrames, ...
+        eyetrace, thresh, file)
+    
+    disp('GUI setup complete')
+
+else
+    disp('ONLY PERMITTED TO SET FEC 1 FRAME ON THE CALIBRATION TRIAL')
+end
+
