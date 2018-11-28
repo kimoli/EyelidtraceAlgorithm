@@ -15,14 +15,10 @@ else
     post=40;
 end
 
-if isvector(trace)	% Single dimension of trace means we're using pupil area algorithm
-	calib.offset=mean(trace(1:pre));
-	maxclosure=max(trace(pre:pre+post));
-	calib.scale=maxclosure-calib.offset;
-else
-	%otherwise, assume we're using eyelid position algo and that the upper and lower eyelid traces are stored as row vectors
-	calib.offset=[mean(trace(1,1:pre));mean(trace(2,1:pre))];
-	calib.scale=-diff(calib.offset);	% have to invert it b/c we want to subtract lower from upper but diff works the other way.
+calib.offset=mean(trace(1:pre));
+maxclosure=max(trace(pre:pre+post));
+calib.scale=maxclosure-calib.offset;
+
 end
 
 

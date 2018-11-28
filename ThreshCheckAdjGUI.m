@@ -114,6 +114,8 @@ disp('GUI setup complete')
 
 % set up potential variables for later in the code
 setappdata(0, 'rodMasks', {})
+setappdata(0, 'rodPatches', {})
+setappdata(0, 'rodApplies', [])
 
 
 
@@ -163,6 +165,16 @@ imshow(procFrames{frameSelected,1})
 
 % update displayed FEC value
 set(handles.outputFEC, 'string', num2str(eyetrace(frameSelected)))
+
+% put the ROD patch(es) on the top layer if it exists
+rodPatches = getappdata(0, 'rodPatches');
+if ~isempty(rodPatches)
+    for rp = 1:length(rodPatches)
+        XY = rodPatches{rp,1};
+        patch(XY(:,1),XY(:,2),'g','FaceColor','none','EdgeColor','g','Tag','rodpatch');
+    end
+end
+
 
 
 
@@ -412,16 +424,33 @@ setPositionConstraintFcn(h,fcn);
 XY=round(wait(h));  % only use for imellipse
 rodPos=round(getPosition(h));
 newRODMask=createMask(h);
-hp=findobj(handles.MaskedFilteredThreshdFrame,'Tag','roipatch');
+hp=findobj(handles.MaskedFilteredThreshdFrame,'Tag','rodpatch');
 delete(hp)
 delete(h);
-handles.roipatch=patch(XY(:,1),XY(:,2),'g','FaceColor','none','EdgeColor','g','Tag','roipatch');
+handles.rodpatch=patch(XY(:,1),XY(:,2),'g','FaceColor','none','EdgeColor','g','Tag','rodpatch');
 handles.XY=XY;
+rodPatches = getappdata(0, 'rodPatches');
+rodPatches{end+1,1} = XY;
+setappdata(0, 'rodPatches', rodPatches)
 
 rodMasks = getappdata(0, 'rodMasks');
 rodMasks{end+1,1} = newRODMask;
 setappdata(0, 'rodMasks', rodMasks)
 
 % ask the user when they would like the mask to apply
+prompt = 'Enter ROD onset FEC (0-1):';
+start = input(prompt);
+while start>1 && start<0
+    start = input(prompt);
+end
 
+prompt = 'Enter ROD offset FEC (0-1, >= onset FEC):';
+stop = input(prompt);
+while stop>1 && stop<0 && stop<start
+    stop = input(prompt);
+end
 
+rodApplies = getappdata(0, 'rodApplies');
+rodApplies(end+1,1) = start;
+rodApplies(end, 2) = stop;
+setappdata(0, 'rodApplies', rodApplies)
