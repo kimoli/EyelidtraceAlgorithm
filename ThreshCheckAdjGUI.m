@@ -25,7 +25,7 @@ function varargout = ThreshCheckAdjGUI(varargin)
 
 % Edit the above text to modify the response to help ThreshCheckAdjGUI
 
-% Last Modified by GUIDE v2.5 27-Nov-2018 17:13:00
+% Last Modified by GUIDE v2.5 28-Nov-2018 11:22:49
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -111,6 +111,9 @@ initThreshCheckAdjGUIDisplay(startframe, handles, rawFrames, procFrames, ...
     eyetrace, thresh, file)
 
 disp('GUI setup complete')
+
+% set up potential variables for later in the code
+setappdata(0, 'rodMasks', {})
 
 
 
@@ -385,3 +388,40 @@ initThreshCheckAdjGUIDisplay(startframe, handles, rawFrames, procFrames, ...
     eyetrace, thresh, file)
 
 disp('GUI setup complete')
+
+
+% --- Executes on button press in newRODButton.
+function newRODButton_Callback(hObject, eventdata, handles)
+% hObject    handle to newRODButton (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+
+% Place rectangle on the processed frame so you can easily select the part
+% with an artifact
+% h=imrect(handles.MaskedFilteredThreshdFrame);
+h=imellipse(handles.MaskedFilteredThreshdFrame);
+
+% fcn = makeConstrainToRectFcn('imrect',get(handles.cameraAx,'XLim'),get(handles.cameraAx,'YLim'));
+fcn = makeConstrainToRectFcn('imellipse',...
+    get(handles.MaskedFilteredThreshdFrame,'XLim'),...
+    get(handles.MaskedFilteredThreshdFrame,'YLim'));
+setPositionConstraintFcn(h,fcn);
+
+% metadata.cam.winpos=round(wait(h));
+XY=round(wait(h));  % only use for imellipse
+rodPos=round(getPosition(h));
+newRODMask=createMask(h);
+hp=findobj(handles.MaskedFilteredThreshdFrame,'Tag','roipatch');
+delete(hp)
+delete(h);
+handles.roipatch=patch(XY(:,1),XY(:,2),'g','FaceColor','none','EdgeColor','g','Tag','roipatch');
+handles.XY=XY;
+
+rodMasks = getappdata(0, 'rodMasks');
+rodMasks{end+1,1} = newRODMask;
+setappdata(0, 'rodMasks', rodMasks)
+
+% ask the user when they would like the mask to apply
+
+
