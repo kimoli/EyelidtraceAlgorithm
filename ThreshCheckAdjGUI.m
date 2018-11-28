@@ -112,6 +112,11 @@ initThreshCheckAdjGUIDisplay(startframe, handles, rawFrames, procFrames, ...
 
 disp('GUI setup complete')
 
+% set up potential variables for later in the code
+setappdata(0, 'rodMasks', {})
+setappdata(0, 'rodPatches', {})
+setappdata(0, 'rodApplies', [])
+
 
 
 
