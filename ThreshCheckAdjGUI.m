@@ -25,7 +25,7 @@ function varargout = ThreshCheckAdjGUI(varargin)
 
 % Edit the above text to modify the response to help ThreshCheckAdjGUI
 
-% Last Modified by GUIDE v2.5 28-Nov-2018 16:52:02
+% Last Modified by GUIDE v2.5 28-Nov-2018 16:59:40
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -516,7 +516,62 @@ while stop>1 && stop<0 && stop<start
     stop = input(prompt);
 end
 
-rodApplies = getappdata(0, 'rodApplies');
-rodApplies(end+1,1) = start;
-rodApplies(end, 2) = stop;
-setappdata(0, 'rodApplies', rodApplies)
+rodEffective = getappdata(0, 'rodEffective');
+rodEffective(end+1,1) = start;
+rodEffective(end, 2) = stop;
+setappdata(0, 'rodEffective', rodEffective)
+
+
+% --- Executes on button press in applyRODsButton.
+function applyRODsButton_Callback(hObject, eventdata, handles)
+% hObject    handle to applyRODsButton (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% not sure if this is the most efficient way to do this but right now I
+% just need to see if this is a good idea
+procFrames = getappdata(0, 'procFrames');
+rodMasks = getappdata(0, 'rodMasks');
+calib = getappdata(0, 'calib');
+rodEffective = getappdata(0, 'rodEffective');
+eyetrace = getappdata(0, 'eyetrace');
+data = getappdata(0, 'calibData');
+
+[m,n,c,f]=size(data);
+
+[r, c] = size(rodEffective);
+
+for m = 1:r
+    neweyetrace=zeros(1,length(f));
+    rodStart = rodEffective(m,1);
+    rodStop = rodEffective(m,2);
+    
+    for i=1:f
+        if eyetrace(i)>= rodStart && eyetrace(i)<= rodStop % only apply the ROD if it is a valid FEC to be doing so
+            procFrames{i,1}(rodMasks{1,1}==1)=1;
+            tr=sum(procFrames{i,1}(:));
+            neweyetrace(i)=(tr-calib.offset(1))./calib.scale;
+            
+            % squash values greater than 1 to 1 because FEC should not be sensitive
+            % to different eyelid closednesses
+            if neweyetrace(i)>1
+                neweyetrace(i) = 1;
+            end
+        else
+            neweyetrace(i) = eyetrace(i);
+        end
+    end
+end
+
+setappdata(0, 'procFrames', procFrames)
+setappdata(0, 'eyetrace', neweyetrace)
+
+currentFrame = str2double(get(handles.FrameNumber, 'string'));
+
+axes(handles.eyelidtracePlot)
+hold off
+plot(neweyetrace')
+hold on
+a = scatter([currentFrame], neweyetrace(currentFrame), 'MarkerEdgeColor', [0 0 1]);
+setappdata(0, 'framePointer', a)
+
