@@ -1,4 +1,4 @@
-function [calib]=processCalibTrial(rawFrames, metadata, thresh, f, w)
+function [calib]=processCalibTrial(rawFrames, metadata, thresh, f, w, varargin)
 
 % for calibration processing, have to do one run through without specific calibration data
 calib.scale=1;
@@ -12,7 +12,11 @@ for i=1:f
     eyetrace(i)=(tr-calib.offset(1))./calib.scale;
 end
 
-calib=getcalib(eyetrace); % this line gets the calibration values for the day
+if nargin>5
+    calib=getcalib_knowFEC1(eyetrace, varargin{1}); % this line gets the calibration values for the day
+else
+    calib = getcalib(eyetrace);
+end
 
 
 end

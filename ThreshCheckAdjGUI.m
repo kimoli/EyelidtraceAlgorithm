@@ -285,12 +285,11 @@ calibData = getappdata(0, 'calibData');
 calibMetadata = getappdata(0, 'calibMetadata');
 w = getappdata(0, 'w');
 [m,n,c,f]=size(calibData);
-rodEffective = getappdata(0, 'rodEffective');
-rodMasks = getappdata(0, 'rodMasks');
+rawFrames = getappdata(0, 'rawFrames'); % need to have the masked calib trial frames saved separately at some point
 
 disp('Processing calibration file')
 % for calibration processing, have to do one run through without specific calibration data
-calib=processCalibTrial(calibData, calibMetadata, newThresh, f, w, rodEffective, rodMasks); % this line gets the calibration values for the day
+calib=processCalibTrial(rawFrames, calibMetadata, newThresh, f, w); % this line gets the calibration values for the day
 setappdata(0,'calib',calib) % update hidden figure calib info
 
 % fetch data and metadata for the video currently being examined
@@ -298,10 +297,9 @@ data = getappdata(0, 'currentData');
 metadata = getappdata(0, 'currentMetadata');
 
 % apply new calibration parameters to video
-[eyetrace, rawFrames, procFrames]=processGivenTrial(data, metadata, newThresh, calib, f, w, rodEffective, rodMasks);
+[eyetrace, procFrames]=processGivenTrial(rawFrames, metadata, newThresh, calib, f, w);
 
 % update the hidden figure's frames and eyetrace records
-setappdata(0, 'rawFrames', rawFrames)
 setappdata(0, 'procFrames', procFrames)
 setappdata(0, 'eyetrace', eyetrace)
 
@@ -310,7 +308,8 @@ disp('Initializing GUI display')
 
 startframe = getappdata(0, 'startframe');
 
-file = getappdata(0, 'filename');
+file = get(handles.currentFileLabel, 'string');
+
 initThreshCheckAdjGUIDisplay(startframe, handles, rawFrames, procFrames, ...
     eyetrace, newThresh, file)
 
@@ -393,12 +392,11 @@ calib=getappdata(0, 'calib'); % use the established calibration information
 
 rodEffective = getappdata(0, 'rodEffective');
 rodMasks = getappdata(0, 'rodMasks');
-
+rawFrames = getappdata(0, 'rawFrames');
 % run though eyetrace value extraction
-[eyetrace, rawFrames, procFrames]=processGivenTrial(data, metadata, thresh, calib, f, w, rodEffective, rodMasks);
+[eyetrace, procFrames]=processGivenTrial(rawFrames, metadata, thresh, calib, f, w);
 
 % save the frames and the eyetrace to the hidden figure
-setappdata(0, 'rawFrames', rawFrames)
 setappdata(0, 'procFrames', procFrames)
 setappdata(0, 'eyetrace', eyetrace)
 
@@ -431,38 +429,22 @@ if strcmpi(file(end-8:end), 'calib.mp4')
     % fetch necessary variables from hidden figure, etc
     calibData = getappdata(0, 'calibData');
     calibMetadata = getappdata(0, 'calibMetadata');
+    rawFrames = getappdata(0, 'rawFrames');
     w = getappdata(0, 'w');
     [m,n,c,f]=size(calibData);
     
     disp('Processing calibration file')
-    % for calibration processing, have to do one run through without specific calibration data
-    % for calibration processing, have to do one run through without specific calibration data
-    calib.scale=1;
-    calib.offset=[0; 0];
+    calib=processCalibTrial(rawFrames, calibMetadata, thresh, f, w, thisFrame); % this line gets the calibration values for the day
+    setappdata(0,'calib',calib) % save calib to the hidden figure so that it is accessible to all parts of the GUI
     
-    eyetrace=zeros(1,length(f));
-    for i=1:f
-        wholeframe=calibData(:,:,1,i);   % make it a grayscale image in case it's not (this assumes all color channels have roughtly the same value)
-        binimage=medfilt2(wholeframe,[w w]) > thresh*256;
-        eyeimage=binimage.*calibMetadata.cam.mask;
-        tr=sum(eyeimage(:));
-        eyetrace(i)=(tr-calib.offset(1))./calib.scale;
-    end
+    % second run though eyetrace value extraction, same video but now calibrated
+    [eyetrace, procFrames]=processGivenTrial(rawFrames, calibMetadata, thresh, calib, f, w);
+    
+    % save the frames and the eyetrace to the hidden figure
+    setappdata(0, 'procFrames', procFrames)
+    setappdata(0, 'eyetrace', eyetrace)
 
-    
-    calib.offset=mean(eyetrace(1:40));
-    maxclosure=eyetrace(thisFrame);
-    calib.scale=maxclosure-calib.offset;
-    
-    setappdata(0,'calib',calib) % update hidden figure calib info
-    rodEffective = getappdata(0, 'rodEffective');
-    rodMasks = getappdata(0, 'rodMasks');
-    
-    % apply new calibration parameters to video
-    [eyetrace, rawFrames, procFrames]=processGivenTrial(calibData, calibMetadata, thresh, calib, f, w, rodEffective, rodMasks);
-    
     % update the hidden figure's frames and eyetrace records
-    setappdata(0, 'rawFrames', rawFrames)
     setappdata(0, 'procFrames', procFrames)
     setappdata(0, 'eyetrace', eyetrace)
     
