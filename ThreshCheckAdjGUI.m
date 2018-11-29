@@ -100,6 +100,7 @@ for i = 1:f
     rawFrames{i,1} = wholeframe;
 end
 setappdata(0, 'originalFrames', rawFrames)
+setappdata(0, 'calibFrames', rawFrames)
 setappdata(0, 'rawFrames', rawFrames)
 
 calib=processCalibTrial(rawFrames, metadata, thresh, f, w); % this line gets the calibration values for the day
@@ -348,14 +349,36 @@ thresh=str2double(get(handles.currentThresholdDisplay, 'string')); % use the sam
 
 calib=getappdata(0, 'calib'); % use the established calibration information
 
+rawFrames = {};
+for i = 1:f
+    wholeframe=data(:,:,1,i);   % make it a grayscale image in case it's not (this assumes all color channels have roughtly the same value)
+    rawFrames{i,1} = wholeframe;
+end
+setappdata(0, 'originalFrames', rawFrames)
+[eyetrace, procFrames]=processGivenTrial(rawFrames, metadata, thresh, calib, f, w);
+
 rodEffective = getappdata(0, 'rodEffective');
 rodMasks = getappdata(0, 'rodMasks');
+% apply masks if they were made
+if ~isempty(rodEffective)
+    [r, c] = size(rodEffective);
+    for m = 1:r
+        rodStart = rodEffective(m,1);
+        rodStop = rodEffective(m,2);
+        for i=1:f
+            if eyetrace(i)>= rodStart && eyetrace(i)<= rodStop % only apply the ROD if it is a valid FEC to be doing so
+                rawFrames{i,1}(rodMasks{m,1}==1)=255; % in grayscale images, 255 corresponds to white
+            end
+        end
+    end
+end
+
+setappdata(0, 'rawFrames', rawFrames)
 
 % run though eyetrace value extraction
-[eyetrace, rawFrames, procFrames]=processGivenTrial(data, metadata, thresh, calib, f, w, rodEffective, rodMasks);
+[eyetrace, procFrames]=processGivenTrial(rawFrames, metadata, thresh, calib, f, w); % it sucks that the video has to get processed twice but I can't think of a better solution right now
 
 % save the frames and the eyetrace to the hidden figure
-setappdata(0, 'rawFrames', rawFrames)
 setappdata(0, 'procFrames', procFrames)
 setappdata(0, 'eyetrace', eyetrace)
 
@@ -471,52 +494,56 @@ function newRODButton_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-
-% Place rectangle on the processed frame so you can easily select the part
-% with an artifact
-% h=imrect(handles.MaskedFilteredThreshdFrame);
-h=imellipse(handles.MaskedFilteredThreshdFrame);
-
-% fcn = makeConstrainToRectFcn('imrect',get(handles.cameraAx,'XLim'),get(handles.cameraAx,'YLim'));
-fcn = makeConstrainToRectFcn('imellipse',...
-    get(handles.MaskedFilteredThreshdFrame,'XLim'),...
-    get(handles.MaskedFilteredThreshdFrame,'YLim'));
-setPositionConstraintFcn(h,fcn);
-
-% metadata.cam.winpos=round(wait(h));
-XY=round(wait(h));  % only use for imellipse
-rodPos=round(getPosition(h));
-newRODMask=createMask(h);
-hp=findobj(handles.MaskedFilteredThreshdFrame,'Tag','rodpatch');
-delete(hp)
-delete(h);
-handles.rodpatch=patch(XY(:,1),XY(:,2),'g','FaceColor','none','EdgeColor','g','Tag','rodpatch');
-handles.XY=XY;
-rodPatches = getappdata(0, 'rodPatches');
-rodPatches{end+1,1} = XY;
-setappdata(0, 'rodPatches', rodPatches)
-
-rodMasks = getappdata(0, 'rodMasks');
-rodMasks{end+1,1} = newRODMask;
-setappdata(0, 'rodMasks', rodMasks)
-
-% ask the user when they would like the mask to apply
-prompt = 'Enter ROD onset FEC (0-1):';
-start = input(prompt);
-while start>1 && start<0
+file = get(handles.currentFileLabel, 'string');
+if strcmpi(file(end-8:end), 'calib.mp4')
+    % Place rectangle on the processed frame so you can easily select the part
+    % with an artifact
+    % h=imrect(handles.MaskedFilteredThreshdFrame);
+    h=imellipse(handles.MaskedFilteredThreshdFrame);
+    
+    % fcn = makeConstrainToRectFcn('imrect',get(handles.cameraAx,'XLim'),get(handles.cameraAx,'YLim'));
+    fcn = makeConstrainToRectFcn('imellipse',...
+        get(handles.MaskedFilteredThreshdFrame,'XLim'),...
+        get(handles.MaskedFilteredThreshdFrame,'YLim'));
+    setPositionConstraintFcn(h,fcn);
+    
+    % metadata.cam.winpos=round(wait(h));
+    XY=round(wait(h));  % only use for imellipse
+    rodPos=round(getPosition(h));
+    newRODMask=createMask(h);
+    hp=findobj(handles.MaskedFilteredThreshdFrame,'Tag','rodpatch');
+    delete(hp)
+    delete(h);
+    handles.rodpatch=patch(XY(:,1),XY(:,2),'g','FaceColor','none','EdgeColor','g','Tag','rodpatch');
+    handles.XY=XY;
+    rodPatches = getappdata(0, 'rodPatches');
+    rodPatches{end+1,1} = XY;
+    setappdata(0, 'rodPatches', rodPatches)
+    
+    rodMasks = getappdata(0, 'rodMasks');
+    rodMasks{end+1,1} = newRODMask;
+    setappdata(0, 'rodMasks', rodMasks)
+    
+    % ask the user when they would like the mask to apply
+    prompt = 'Enter ROD onset FEC (0-1):';
     start = input(prompt);
-end
-
-prompt = 'Enter ROD offset FEC (0-1, >= onset FEC):';
-stop = input(prompt);
-while stop>1 && stop<0 && stop<start
+    while start>1 && start<0
+        start = input(prompt);
+    end
+    
+    prompt = 'Enter ROD offset FEC (0-1, >= onset FEC):';
     stop = input(prompt);
+    while stop>1 && stop<0 && stop<start
+        stop = input(prompt);
+    end
+    
+    rodEffective = getappdata(0, 'rodEffective');
+    rodEffective(end+1,1) = start;
+    rodEffective(end, 2) = stop;
+    setappdata(0, 'rodEffective', rodEffective)
+else
+    disp('ONLY PERMITTED TO SET RODs ON THE CALIBRATION TRIAL')
 end
-
-rodEffective = getappdata(0, 'rodEffective');
-rodEffective(end+1,1) = start;
-rodEffective(end, 2) = stop;
-setappdata(0, 'rodEffective', rodEffective)
 
 
 % --- Executes on button press in applyRODsButton.
@@ -525,63 +552,69 @@ function applyRODsButton_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% mask out the raw eyelid frame so that the mask will apply across all
-% later applications
-rawFrames = getappdata(0, 'rawFrames');
-rodMasks = getappdata(0, 'rodMasks');
-calib = getappdata(0, 'calib');
-rodEffective = getappdata(0, 'rodEffective');
-eyetrace = getappdata(0, 'eyetrace');
-data = getappdata(0, 'calibData');
-
-[m,n,c,f]=size(data);
-
-[r, c] = size(rodEffective);
-
-for m = 1:r
-    rodStart = rodEffective(m,1);
-    rodStop = rodEffective(m,2);
+file = get(handles.currentFileLabel, 'string');
+if strcmpi(file(end-8:end), 'calib.mp4')
+    % mask out the raw eyelid frame so that the mask will apply across all
+    % later applications
+    rawFrames = getappdata(0, 'rawFrames');
+    rodMasks = getappdata(0, 'rodMasks');
+    calib = getappdata(0, 'calib');
+    rodEffective = getappdata(0, 'rodEffective');
+    eyetrace = getappdata(0, 'eyetrace');
+    data = getappdata(0, 'calibData');
     
-    for i=1:f
-        if eyetrace(i)>= rodStart && eyetrace(i)<= rodStop % only apply the ROD if it is a valid FEC to be doing so
-            rawFrames{i,1}(rodMasks{m,1}==1)=255; % in grayscale images, 255 corresponds to white
+    [m,n,c,f]=size(data);
+    
+    [r, c] = size(rodEffective);
+    
+    for m = 1:r
+        rodStart = rodEffective(m,1);
+        rodStop = rodEffective(m,2);
+        
+        for i=1:f
+            if eyetrace(i)>= rodStart && eyetrace(i)<= rodStop % only apply the ROD if it is a valid FEC to be doing so
+                rawFrames{i,1}(rodMasks{m,1}==1)=255; % in grayscale images, 255 corresponds to white
+            end
         end
     end
+    
+    setappdata(0, 'rawFrames', rawFrames)
+    setappdata(0, 'calibFrames', rawFrames)
+    
+    % recalibrate
+    w = getappdata(0, 'w'); % how many pixels around the current pixel should be filtered together
+    data = getappdata(0, 'calibData');
+    metadata = getappdata(0, 'calibMetadata');
+    thresh=str2double(get(handles.currentThresholdDisplay, 'string')); % just set up using the threshold from calibration
+    
+    [m,n,c,f]=size(data);
+    
+    disp('Processing calibration file')
+    % for calibration processing, have to do one run through without specific calibration data
+    calib=processCalibTrial(rawFrames, metadata, thresh, f, w); % this line gets the calibration values for the day
+    setappdata(0,'calib',calib) % save calib to the hidden figure so that it is accessible to all parts of the GUI
+    
+    % second run though eyetrace value extraction, same video but now calibrated
+    [eyetrace, procFrames]=processGivenTrial(rawFrames, metadata, thresh, calib, f, w);
+    
+    % save the frames and the eyetrace to the hidden figure
+    setappdata(0, 'procFrames', procFrames)
+    setappdata(0, 'eyetrace', eyetrace)
+    
+    % start up the rest of the GUI
+    disp('Initializing GUI display')
+    
+    startframe = str2double(get(handles.FrameNumber, 'string'));
+    disp(startframe)
+    file = get(handles.currentFileLabel, 'string');
+    
+    initThreshCheckAdjGUIDisplay(startframe, handles, rawFrames, procFrames, ...
+        eyetrace, thresh, file)
+    
+    disp('GUI setup complete')
+else
+    disp('ONLY PERMITTED TO SET RODs ON THE CALIBRATION TRIAL')
 end
-
-setappdata(0, 'rawFrames', rawFrames)
-
-% recalibrate
-w = getappdata(0, 'w'); % how many pixels around the current pixel should be filtered together
-data = getappdata(0, 'calibData');
-metadata = getappdata(0, 'calibMetadata');
-thresh=str2double(get(handles.currentThresholdDisplay, 'string')); % just set up using the threshold from calibration
-
-[m,n,c,f]=size(data);
-
-disp('Processing calibration file')
-% for calibration processing, have to do one run through without specific calibration data
-calib=processCalibTrial(rawFrames, metadata, thresh, f, w); % this line gets the calibration values for the day
-setappdata(0,'calib',calib) % save calib to the hidden figure so that it is accessible to all parts of the GUI
-
-% second run though eyetrace value extraction, same video but now calibrated
-[eyetrace, procFrames]=processGivenTrial(rawFrames, metadata, thresh, calib, f, w);
-
-% save the frames and the eyetrace to the hidden figure
-setappdata(0, 'procFrames', procFrames)
-setappdata(0, 'eyetrace', eyetrace)
-
-% start up the rest of the GUI
-disp('Initializing GUI display')
-
-startframe = str2double(get(handles.FrameNumber, 'string'));
-disp(startframe)
-file = get(handles.currentFileLabel, 'string');
-
-initThreshCheckAdjGUIDisplay(startframe, handles, rawFrames, procFrames, ...
-    eyetrace, thresh, file)
-
-disp('GUI setup complete')
 
 % 
 % 
