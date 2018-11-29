@@ -1,4 +1,4 @@
-function calib=getcalib(trace)
+function calib=getcalib_knowFEC1(trace, frame)
 % function [scale,offset]=getcalib(trace,varargin)
 % Return video calibration values for eyelid (scale and offset) in CAL vector. 
 % [scale,offset]=getcalib(TRACE,{PRE,POST})
@@ -8,10 +8,9 @@ function calib=getcalib(trace)
 % closure by POST (default 40 frames).
 
 
-win = 40:80;
 
 calib.offset=mean(trace(1:40));
-maxclosure=max(trace(win));
+maxclosure=trace(frame);
 calib.scale=maxclosure-calib.offset;
 
 end
