@@ -61,6 +61,11 @@ handles.output = hObject;
 % Update handles structure
 guidata(hObject, handles);
 
+% set up potential variables for later in the code
+setappdata(0, 'rodMasks', {})
+setappdata(0, 'rodPatches', {})
+setappdata(0, 'rodEffective', [])
+
 % have the user select a video file to examine
 disp('Please select a calibration file')
 file = uigetfile('.mp4', 'Please select calibration file.');
@@ -90,11 +95,11 @@ setappdata(0, 'originalThresh', thresh) % saving this to hidden figure as it mig
 disp('Processing calibration file')
 % for calibration processing, have to do one run through without specific calibration data
 
-calib=processCalibTrial(data, metadata, thresh, f, w); % this line gets the calibration values for the day
+calib=processCalibTrial(data, metadata, thresh, f, w, [], {}); % this line gets the calibration values for the day
 setappdata(0,'calib',calib) % save calib to the hidden figure so that it is accessible to all parts of the GUI
 
 % second run though eyetrace value extraction, same video but now calibrated
-[eyetrace, rawFrames, procFrames]=processGivenTrial(data, metadata, thresh, calib, f, w);
+[eyetrace, rawFrames, procFrames]=processGivenTrial(data, metadata, thresh, calib, f, w, [], {});
 
 % save the frames and the eyetrace to the hidden figure
 setappdata(0, 'rawFrames', rawFrames)
@@ -111,12 +116,6 @@ initThreshCheckAdjGUIDisplay(startframe, handles, rawFrames, procFrames, ...
     eyetrace, thresh, file)
 
 disp('GUI setup complete')
-
-% set up potential variables for later in the code
-setappdata(0, 'rodMasks', {})
-setappdata(0, 'rodPatches', {})
-setappdata(0, 'rodApplies', [])
-
 
 
 
@@ -280,10 +279,12 @@ calibData = getappdata(0, 'calibData');
 calibMetadata = getappdata(0, 'calibMetadata');
 w = getappdata(0, 'w');
 [m,n,c,f]=size(calibData);
+rodEffective = getappdata(0, 'rodEffective');
+rodMasks = getappdata(0, 'rodMasks');
 
 disp('Processing calibration file')
 % for calibration processing, have to do one run through without specific calibration data
-calib=processCalibTrial(calibData, calibMetadata, newThresh, f, w); % this line gets the calibration values for the day
+calib=processCalibTrial(calibData, calibMetadata, newThresh, f, w, rodEffective, rodMasks); % this line gets the calibration values for the day
 setappdata(0,'calib',calib) % update hidden figure calib info
 
 % fetch data and metadata for the video currently being examined
@@ -291,7 +292,7 @@ data = getappdata(0, 'currentData');
 metadata = getappdata(0, 'currentMetadata');
 
 % apply new calibration parameters to video
-[eyetrace, rawFrames, procFrames]=processGivenTrial(data, metadata, newThresh, calib, f, w);
+[eyetrace, rawFrames, procFrames]=processGivenTrial(data, metadata, newThresh, calib, f, w, rodEffective, rodMasks);
 
 % update the hidden figure's frames and eyetrace records
 setappdata(0, 'rawFrames', rawFrames)
@@ -342,8 +343,11 @@ thresh=str2double(get(handles.currentThresholdDisplay, 'string')); % use the sam
 
 calib=getappdata(0, 'calib'); % use the established calibration information
 
+rodEffective = getappdata(0, 'rodEffective');
+rodMasks = getappdata(0, 'rodMasks');
+
 % run though eyetrace value extraction
-[eyetrace, rawFrames, procFrames]=processGivenTrial(data, metadata, thresh, calib, f, w);
+[eyetrace, rawFrames, procFrames]=processGivenTrial(data, metadata, thresh, calib, f, w, rodEffective, rodMasks);
 
 % save the frames and the eyetrace to the hidden figure
 setappdata(0, 'rawFrames', rawFrames)
@@ -381,8 +385,11 @@ thresh=str2double(get(handles.currentThresholdDisplay, 'string')); % use the sam
 
 calib=getappdata(0, 'calib'); % use the established calibration information
 
+rodEffective = getappdata(0, 'rodEffective');
+rodMasks = getappdata(0, 'rodMasks');
+
 % run though eyetrace value extraction
-[eyetrace, rawFrames, procFrames]=processGivenTrial(data, metadata, thresh, calib, f, w);
+[eyetrace, rawFrames, procFrames]=processGivenTrial(data, metadata, thresh, calib, f, w, rodEffective, rodMasks);
 
 % save the frames and the eyetrace to the hidden figure
 setappdata(0, 'rawFrames', rawFrames)
@@ -442,9 +449,11 @@ if strcmpi(file(end-8:end), 'calib.mp4')
     calib.scale=maxclosure-calib.offset;
     
     setappdata(0,'calib',calib) % update hidden figure calib info
+    rodEffective = getappdata(0, 'rodEffective');
+    rodMasks = getappdata(0, 'rodMasks');
     
     % apply new calibration parameters to video
-    [eyetrace, rawFrames, procFrames]=processGivenTrial(calibData, calibMetadata, thresh, calib, f, w);
+    [eyetrace, rawFrames, procFrames]=processGivenTrial(calibData, calibMetadata, thresh, calib, f, w, rodEffective, rodMasks);
     
     % update the hidden figure's frames and eyetrace records
     setappdata(0, 'rawFrames', rawFrames)
@@ -548,7 +557,7 @@ for m = 1:r
     
     for i=1:f
         if eyetrace(i)>= rodStart && eyetrace(i)<= rodStop % only apply the ROD if it is a valid FEC to be doing so
-            procFrames{i,1}(rodMasks{1,1}==1)=1;
+            procFrames{i,1}(rodMasks{m,1}==1)=1;
             tr=sum(procFrames{i,1}(:));
             neweyetrace(i)=(tr-calib.offset(1))./calib.scale;
             
