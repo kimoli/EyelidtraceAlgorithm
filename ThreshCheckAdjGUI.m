@@ -65,17 +65,36 @@ guidata(hObject, handles);
 setappdata(0, 'rodMasks', {})
 setappdata(0, 'rodPatches', {})
 setappdata(0, 'rodEffective', [])
+setappdata(0, 'FEC1Frame', [])
 
-% have the user select a video file to examine
-disp('Please select a calibration file')
-file = uigetfile('.mp4', 'Please select calibration file.');
-while strcmpi(file(end-8:end), 'calib.mp4')==0
-    disp('Please select a calibration file (must end in calib.mp4)')
-    file = uigetfile('.mp4', 'Please select calibration file.');
+% tell user to select directory
+dname = uigetdir('L:\\users\okim\behavior', 'Select an animal and a day.'); % this assumes that the user is working on ALBUS
+cd(dname)
+
+% check the trialdata.mat file to determine if you need to set a different
+% calib baseline value
+loadMe = dir('trialdata.mat');
+baslinecalibtrial = 0;
+if ~isempty(loadMe)
+    load(loadMe.name)
+    baselines = nan(size(trials.eyelidpos,1),1);
+    for i = 1:size(trials.eyelidpos,1)
+        baselines(i,1) = mean(trials.eyelidpos(i,1:40));
+    end
+    [mval idx] = min(baselines);
+    if mval<0
+        baslinecalibtrial = idx;
+    end
 end
-setappdata(0, 'filename', file)
+setappdata(0, 'baslinecalibtrial', baslinecalibtrial)
 
-disp('Loading file')
+goHere = strcat(dname, '\compressed');
+cd(goHere)
+
+calibfileinfo = dir('*calib.mp4');
+file = calibfileinfo.name;
+
+disp('Loading calibration file')
 [data,metadata]=loadCompressed(file);
 % save calibration trial information to the hidden figure so you can keep
 % using it to derive the calibration data
@@ -103,7 +122,7 @@ setappdata(0, 'originalFrames', rawFrames)
 setappdata(0, 'calibFrames', rawFrames)
 setappdata(0, 'rawFrames', rawFrames)
 
-calib=processCalibTrial(rawFrames, metadata, thresh, f, w); % this line gets the calibration values for the day
+calib=processCalibTrial(rawFrames, metadata, thresh, f, w, baslinecalibtrial); % this line gets the calibration values for the day
 setappdata(0,'calib',calib) % save calib to the hidden figure so that it is accessible to all parts of the GUI
 
 % second run though eyetrace value extraction, same video but now calibrated
@@ -290,7 +309,13 @@ rawFrames = getappdata(0, 'rawFrames'); % need to have the masked calib trial fr
 
 disp('Processing calibration file')
 % for calibration processing, have to do one run through without specific calibration data
-calib=processCalibTrial(rawFrames, calibMetadata, newThresh, f, w); % this line gets the calibration values for the day
+baslinecalibtrial=getappdata(0, 'baslinecalibtrial');
+FEC1Frame = getappdata(0, 'FEC1Frame');
+if isempty(FEC1Frame)
+    calib=processCalibTrial(rawFrames, calibMetadata, newThresh, f, w, baslinecalibtrial); % this line gets the calibration values for the day
+else
+    calib=processCalibTrial(rawFrames, calibMetadata, newThresh, f, w, baslinecalibtrial, FEC1Frame); % this line gets the calibration values for the day
+end
 setappdata(0,'calib',calib) % update hidden figure calib info
 
 % fetch data and metadata for the video currently being examined
@@ -445,6 +470,7 @@ file = get(handles.currentFileLabel, 'string');
 if strcmpi(file(end-8:end), 'calib.mp4')
     % get the current frame
     thisFrame = str2double(get(handles.FrameNumber, 'string'));
+    setappdata(0, 'FEC1Frame', thisFrame)
     
     % get the current threshold
     thresh = str2double(get(handles.currentThresholdDisplay, 'string'));
@@ -457,7 +483,8 @@ if strcmpi(file(end-8:end), 'calib.mp4')
     [m,n,c,f]=size(calibData);
     
     disp('Processing calibration file')
-    calib=processCalibTrial(rawFrames, calibMetadata, thresh, f, w, thisFrame); % this line gets the calibration values for the day
+    baslinecalibtrial = getappdata(0, 'baslinecalibtrial');
+    calib=processCalibTrial(rawFrames, calibMetadata, thresh, f, w, baslinecalibtrial, thisFrame); % this line gets the calibration values for the day
     setappdata(0,'calib',calib) % save calib to the hidden figure so that it is accessible to all parts of the GUI
     
     % second run though eyetrace value extraction, same video but now calibrated
@@ -591,7 +618,13 @@ if strcmpi(file(end-8:end), 'calib.mp4')
     
     disp('Processing calibration file')
     % for calibration processing, have to do one run through without specific calibration data
-    calib=processCalibTrial(rawFrames, metadata, thresh, f, w); % this line gets the calibration values for the day
+    baslinecalibtrial = getappdata(0, 'baslinecalibtrial');
+    FEC1Frame = getappdata(0, 'FEC1Frame');
+    if isempty(FEC1Frame)
+        calib=processCalibTrial(rawFrames, metadata, thresh, f, w, baslinecalibtrial); % this line gets the calibration values for the day
+    else
+        calib=processCalibTrial(rawFrames, metadata, thresh, f, w, baslinecalibtrial, FEC1Frame); % this line gets the calibration values for the day
+    end
     setappdata(0,'calib',calib) % save calib to the hidden figure so that it is accessible to all parts of the GUI
     
     % second run though eyetrace value extraction, same video but now calibrated
