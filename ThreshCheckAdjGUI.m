@@ -702,4 +702,7 @@ for i = 1:length(files)
     end
     
     setappdata(0, 'newTrialdata', trials)
+    cd('..')
+    save('newTrialdata.mat', trials)
+    cd(strcat(pwd,'\compressed'))
 end
