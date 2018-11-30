@@ -13,7 +13,7 @@ hold off
 plot(eyetrace', 'Color', [0 0 0])
 hold on
 plot(origTrial', 'Color', [0 0 0], 'LineStyle', ':')
-plot(newTrial', 'Color', [0 0 0], 'LineStyle', '--')
+plot(newTrial', 'Color', [1 0 0], 'LineStyle', '--')
 a = scatter(startframe, eyetrace(startframe), 'MarkerEdgeColor', [0 0 1]);
 setappdata(0, 'framePointer', a)
 
