@@ -88,6 +88,7 @@ if ~isempty(loadMe)
 end
 setappdata(0, 'baslinecalibtrial', baslinecalibtrial)
 setappdata(0, 'trialdata', trials)
+setappdata(0, 'newTrialdata', [])
 
 goHere = strcat(dname, '\compressed');
 cd(goHere)
@@ -141,8 +142,9 @@ disp('Initializing GUI display')
 startframe = 1; % making this a variable in case I want to change it later
 setappdata(0, 'startframe', startframe)
 
+origTrace = trials.eyelidpos(end,:);
 initThreshCheckAdjGUIDisplay(startframe, handles, rawFrames, procFrames, ...
-    eyetrace, thresh, file)
+    eyetrace, thresh, file, origTrace, [])
 
 disp('GUI setup complete')
 
