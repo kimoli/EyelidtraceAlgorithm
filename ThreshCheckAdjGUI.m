@@ -688,8 +688,13 @@ for i = 1:length(files)
     trials.trialnum = i; % assumes that matlab is going through files in alphanumeric order
     trials.type{i,1} = metadata.stim.type;
     trials.session_of_day(i,1) = str2double(files(i,1).name(end-9:end-8)); % assumes that filename uses the same format as OKim in 2018
-    trials.encoder_displacement(i,1:length(encoder.displacement)) = encoder.displacement';
-    trials.encoder_counts(i,1:length(encoder.counts)) = encoder.counts';
+    if isnan(encoder) % will happen on calibration trial as there is no encoder structure
+        trials.encoder_displacement(i,1:length(encoder.displacement)) = nan(1,length(encoder.displacement));
+        trials.encoder_counts(i,1:length(encoder.counts)) = nan(1,length(encoder.displacement));
+    else
+        trials.encoder_displacement(i,1:length(encoder.displacement)) = encoder.displacement';
+        trials.encoder_counts(i,1:length(encoder.counts)) = encoder.counts';
+    end
     try
         trials.ITI(i,1) = metadata.stim.c.ITI;
     catch ME
