@@ -25,7 +25,7 @@ function varargout = ThreshCheckAdjGUI(varargin)
 
 % Edit the above text to modify the response to help ThreshCheckAdjGUI
 
-% Last Modified by GUIDE v2.5 28-Nov-2018 16:59:40
+% Last Modified by GUIDE v2.5 29-Nov-2018 18:00:06
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -87,10 +87,14 @@ if ~isempty(loadMe)
     end
 end
 setappdata(0, 'baslinecalibtrial', baslinecalibtrial)
+setappdata(0, 'trialdata', trials)
+setappdata(0, 'newTrialdata', [])
 
 goHere = strcat(dname, '\compressed');
 cd(goHere)
 
+
+% start working on the calibration file
 calibfileinfo = dir('*calib.mp4');
 file = calibfileinfo.name;
 
@@ -138,8 +142,9 @@ disp('Initializing GUI display')
 startframe = 1; % making this a variable in case I want to change it later
 setappdata(0, 'startframe', startframe)
 
+origTrace = trials.eyelidpos(end,:);
 initThreshCheckAdjGUIDisplay(startframe, handles, rawFrames, procFrames, ...
-    eyetrace, thresh, file)
+    eyetrace, thresh, file, origTrace, [])
 
 disp('GUI setup complete')
 
@@ -336,8 +341,22 @@ startframe = getappdata(0, 'startframe');
 
 file = get(handles.currentFileLabel, 'string');
 
+origTrials = getappdata(0, 'trialdata');
+newTrials = getappdata(0, 'newTrialdata');
+
+trialnum = str2double(file(end-6:end-4));
+if isnan(trialnum) % is calibration trial, assume that calibration trial is the last one in the traildata table
+    trialnum = size(origTrials.eyelidpos,1);
+end
+
+if isempty(newTrials)
+    newTrialTrace = [];
+else
+    newTrialTrace = newTrials.eyelidpos(trialnum, :);
+end
 initThreshCheckAdjGUIDisplay(startframe, handles, rawFrames, procFrames, ...
-    eyetrace, newThresh, file)
+    eyetrace, newThresh, file, origTrials.eyelidpos(trialnum, :), ...
+    newTrialTrace)
 
 disp('GUI setup complete')
 
@@ -374,30 +393,7 @@ thresh=str2double(get(handles.currentThresholdDisplay, 'string')); % use the sam
 
 calib=getappdata(0, 'calib'); % use the established calibration information
 
-rawFrames = {};
-for i = 1:f
-    wholeframe=data(:,:,1,i);   % make it a grayscale image in case it's not (this assumes all color channels have roughtly the same value)
-    rawFrames{i,1} = wholeframe;
-end
-setappdata(0, 'originalFrames', rawFrames)
-[eyetrace, procFrames]=processGivenTrial(rawFrames, metadata, thresh, calib, f, w);
-
-rodEffective = getappdata(0, 'rodEffective');
-rodMasks = getappdata(0, 'rodMasks');
-% apply masks if they were made
-if ~isempty(rodEffective)
-    [r, c] = size(rodEffective);
-    for m = 1:r
-        rodStart = rodEffective(m,1);
-        rodStop = rodEffective(m,2);
-        for i=1:f
-            if eyetrace(i)>= rodStart && eyetrace(i)<= rodStop % only apply the ROD if it is a valid FEC to be doing so
-                rawFrames{i,1}(rodMasks{m,1}==1)=255; % in grayscale images, 255 corresponds to white
-            end
-        end
-    end
-end
-
+[rawFrames] = getFramesAndApplyRODs(data, metadata, thresh, calib, f, w);
 setappdata(0, 'rawFrames', rawFrames)
 
 % run though eyetrace value extraction
@@ -412,8 +408,22 @@ disp('Initializing GUI display')
 
 startframe = getappdata(0, 'startframe');
 
+origTrials = getappdata(0, 'trialdata');
+newTrials = getappdata(0, 'newTrialdata');
+
+trialnum = str2double(file(end-6:end-4));
+if isnan(trialnum) % is calibration trial, assume that calibration trial is the last one in the traildata table
+    trialnum = size(origTrials.eyelidpos,1);
+end
+
+if isempty(newTrials)
+    newTrialTrace = [];
+else
+    newTrialTrace = newTrials.eyelidpos(trialnum, :);
+end
 initThreshCheckAdjGUIDisplay(startframe, handles, rawFrames, procFrames, ...
-    eyetrace, thresh, file)
+    eyetrace, thresh, file, origTrials.eyelidpos(trialnum, :), ...
+    newTrialTrace)
 
 disp('GUI setup complete')
 
@@ -438,8 +448,6 @@ thresh=str2double(get(handles.currentThresholdDisplay, 'string')); % use the sam
 
 calib=getappdata(0, 'calib'); % use the established calibration information
 
-rodEffective = getappdata(0, 'rodEffective');
-rodMasks = getappdata(0, 'rodMasks');
 rawFrames = getappdata(0, 'rawFrames');
 % run though eyetrace value extraction
 [eyetrace, procFrames]=processGivenTrial(rawFrames, metadata, thresh, calib, f, w);
@@ -452,10 +460,24 @@ setappdata(0, 'eyetrace', eyetrace)
 disp('Initializing GUI display')
 
 startframe = getappdata(0, 'startframe');
-file = getappdata(0, 'filename');
+file = get(handles.currentFileLabel, 'string');
 
+origTrials = getappdata(0, 'trialdata');
+newTrials = getappdata(0, 'newTrialdata');
+
+trialnum = str2double(file(end-6:end-4));
+if isnan(trialnum) % is calibration trial, assume that calibration trial is the last one in the traildata table
+    trialnum = size(origTrials.eyelidpos,1);
+end
+
+if isempty(newTrials)
+    newTrialTrace = [];
+else
+    newTrialTrace = newTrials.eyelidpos(trialnum, :);
+end
 initThreshCheckAdjGUIDisplay(startframe, handles, rawFrames, procFrames, ...
-    eyetrace, thresh, file)
+    eyetrace, thresh, file, origTrials.eyelidpos(trialnum, :), ...
+    newTrialTrace)
 
 disp('GUI setup complete')
 
@@ -503,8 +525,22 @@ if strcmpi(file(end-8:end), 'calib.mp4')
     
     startframe = getappdata(0, 'startframe');
     
+    origTrials = getappdata(0, 'trialdata');
+    newTrials = getappdata(0, 'newTrialdata');
+    
+    trialnum = str2double(file(end-6:end-4));
+    if isnan(trialnum) % is calibration trial, assume that calibration trial is the last one in the traildata table
+        trialnum = size(origTrials.eyelidpos,1);
+    end
+    
+    if isempty(newTrials)
+        newTrialTrace = [];
+    else
+        newTrialTrace = newTrials.eyelidpos(trialnum, :);
+    end
     initThreshCheckAdjGUIDisplay(startframe, handles, rawFrames, procFrames, ...
-        eyetrace, thresh, file)
+        eyetrace, thresh, file, origTrials.eyelidpos(trialnum, :), ...
+        newTrialTrace)
     
     disp('GUI setup complete')
 
@@ -638,11 +674,25 @@ if strcmpi(file(end-8:end), 'calib.mp4')
     disp('Initializing GUI display')
     
     startframe = str2double(get(handles.FrameNumber, 'string'));
-    disp(startframe)
+    
     file = get(handles.currentFileLabel, 'string');
     
+    origTrials = getappdata(0, 'trialdata');
+    newTrials = getappdata(0, 'newTrialdata');
+    
+    trialnum = str2double(file(end-6:end-4));
+    if isnan(trialnum) % is calibration trial, assume that calibration trial is the last one in the traildata table
+        trialnum = size(origTrials.eyelidpos,1);
+    end
+    
+    if isempty(newTrials)
+        newTrialTrace = [];
+    else
+        newTrialTrace = newTrials.eyelidpos(trialnum, :);
+    end
     initThreshCheckAdjGUIDisplay(startframe, handles, rawFrames, procFrames, ...
-        eyetrace, thresh, file)
+        eyetrace, thresh, file, origTrials.eyelidpos(trialnum, :), ...
+        newTrialTrace)
     
     disp('GUI setup complete')
 else
@@ -659,4 +709,96 @@ end
 % hold on
 % a = scatter([currentFrame], neweyetrace(currentFrame), 'MarkerEdgeColor', [0 0 1]);
 % setappdata(0, 'framePointer', a)
+
+
+
+% --- Executes on button press in newTrialdataButton.
+function newTrialdataButton_Callback(hObject, eventdata, handles)
+% hObject    handle to newTrialdataButton (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% use the ROD's, FEC1Frame, and calib structure to process all the trials
+% from this day
+disp('Generating new trialdata...')
+% cycle through all the days
+files = dir('*.mp4');
+trials = [];
+for i = 1:length(files)
+    disp(strcat('...processing trial', num2str(i)))
+    
+    [data,metadata,encoder]=loadCompressed(files(i,1).name);
+    
+    % get stored info from the GUI and the hidden figure
+    [~,~,~,f]=size(data);
+    w = getappdata(0, 'w');
+    thresh=str2double(get(handles.currentThresholdDisplay, 'string'));
+    calib = getappdata(0, 'calib');
+    
+    % generate the wholeframes and apply the RODs to the frames
+    [rawFrames] = getFramesAndApplyRODs(data, metadata, thresh, calib, f, w);
+    
+    % use processGivenTrial to do the rest
+    [eyetrace, ~]=processGivenTrial(rawFrames, metadata, thresh, calib, f, w);
+    
+    % set up new trial table based on this trial's metadata, assumes that
+    % eyetrace is the same across all trials. also assumes 200 ms camera
+    % pretime and 5 ms frame duration
+    trials.eyelidpos(i,1:length(eyetrace)) = eyetrace;
+    maxtm = (length(eyetrace) - (0.200/0.005))*0.005;
+    trials.tm(i,1:length(eyetrace)) = [-0.2:0.005:(maxtm-0.005)];
+    trials.fnames{i,1} = files(i,1).name;
+    trials.c_isi(i,1) = metadata.stim.c.isi;
+    trials.c_csnum(i,1) = metadata.stim.c.csnum;
+    trials.c_csdur(i,1) = metadata.stim.c.csdur;
+    trials.c_usnum(i,1) = metadata.stim.c.usnum;
+    trials.c_usdur(i,1) = metadata.stim.c.usdur;
+    trials.laser.delay(i,1) = metadata.stim.l.delay;
+    trials.laser.dur(i,1) = metadata.stim.l.dur;
+    trials.laser.amp(i,1) = metadata.stim.l.amp;
+    trials.laser.freq(i,1) = metadata.stim.l.freq;
+    trials.laser.pulsewidth(i,1) = metadata.stim.l.pulsewidth;
+    trials.trialnum = i; % assumes that matlab is going through files in alphanumeric order
+    trials.type{i,1} = metadata.stim.type;
+    trials.session_of_day(i,1) = str2double(files(i,1).name(end-9:end-8)); % assumes that filename uses the same format as OKim in 2018
+    if isstruct(encoder) % will happen on calibration trial as there is no encoder structure
+        trials.encoder_displacement(i,1:length(encoder.displacement)) = encoder.displacement';
+        trials.encoder_counts(i,1:length(encoder.counts)) = encoder.counts';
+    else % assumes encoder sampling rate is same as eyelid
+        trials.encoder_displacement(i,1:length(eyetrace)) = nan(1,length(eyetrace));
+        trials.encoder_counts(i,1:length(eyetrace)) = nan(1,length(eyetrace));
+    end
+    
+    try
+        trials.ITI(i,1) = metadata.stim.c.ITI;
+    catch ME
+        trials.ITI(i,1) = NaN;
+    end
+end
+
+
+setappdata(0, 'newTrialdata', trials)
+cd('..')
+save('newTrialdata.mat', 'trials')
+cd(strcat(pwd,'\compressed'))
+disp('Saved new trialdata')
+
+file = get(handles.currentFileLabel, 'string');
+
+origTrials = getappdata(0, 'trialdata');
+
+trialnum = str2double(file(end-6:end-4));
+if isnan(trialnum) % is calibration trial, assume that calibration trial is the last one in the traildata table
+    trialnum = size(origTrials.eyelidpos,1);
+end
+
+if isempty(newTrials)
+    newTrialTrace = [];
+else
+    newTrialTrace = trials.eyelidpos(trialnum, :);
+end
+initThreshCheckAdjGUIDisplay(startframe, handles, rawFrames, procFrames, ...
+    eyetrace, thresh, file, origTrials.eyelidpos(trialnum, :), ...
+    newTrialTrace)
+
 

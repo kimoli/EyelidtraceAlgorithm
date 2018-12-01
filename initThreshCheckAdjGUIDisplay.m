@@ -1,4 +1,5 @@
-function initThreshCheckAdjGUIDisplay(startframe, handles, rawFrames, procFrames, eyetrace, thresh, file)
+function initThreshCheckAdjGUIDisplay(startframe, handles, rawFrames, procFrames, ...
+    eyetrace, thresh, file, origTrial, newTrial)
 
 axes(handles.rawFrame)
 imshow(rawFrames{startframe,1})
@@ -6,11 +7,14 @@ imshow(rawFrames{startframe,1})
 axes(handles.MaskedFilteredThreshdFrame)
 imshow(procFrames{startframe,1})
 
+
 axes(handles.eyelidtracePlot)
 hold off
-plot(eyetrace')
+plot(eyetrace', 'Color', [0 0 0])
 hold on
-a = scatter([startframe], eyetrace(startframe), 'MarkerEdgeColor', [0 0 1]);
+plot(origTrial', 'Color', [0 0 0], 'LineStyle', ':')
+plot(newTrial', 'Color', [1 0 0], 'LineStyle', '--')
+a = scatter(startframe, eyetrace(startframe), 'MarkerEdgeColor', [0 0 1]);
 setappdata(0, 'framePointer', a)
 
 set(handles.FrameNumber, 'string', num2str(startframe))
