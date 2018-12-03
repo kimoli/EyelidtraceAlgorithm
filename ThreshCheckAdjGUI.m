@@ -389,6 +389,8 @@ w = getappdata(0, 'w'); % how many pixels around the current pixel should be fil
 
 thresh=str2double(get(handles.currentThresholdDisplay, 'string')); % use the same threshold as was being used for the previous video
 
+trialdata = getappdata(0, 'trialdata', trials);
+
 [m,n,c,f]=size(data);
 
 calib=getappdata(0, 'calib'); % use the established calibration information
@@ -618,7 +620,7 @@ function applyRODsButton_Callback(hObject, eventdata, handles)
 file = get(handles.currentFileLabel, 'string');
 if strcmpi(file(end-8:end), 'calib.mp4')
     % mask out the raw eyelid frame so that the mask will apply across all
-    % later applications
+    % later applications regardless of the changed eyelid position values
     rawFrames = getappdata(0, 'rawFrames');
     rodMasks = getappdata(0, 'rodMasks');
     calib = getappdata(0, 'calib');
