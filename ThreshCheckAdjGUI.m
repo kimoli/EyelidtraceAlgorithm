@@ -66,6 +66,8 @@ setappdata(0, 'rodMasks', {})
 setappdata(0, 'rodPatches', {})
 setappdata(0, 'rodEffective', [])
 setappdata(0, 'FEC1Frame', [])
+setappdata(0, 'calibAtRODSetting', [])
+setappdata(0, 'threshAtRODSetting', [])
 
 % tell user to select directory
 dname = uigetdir('L:\\users\okim\behavior', 'Select an animal and a day.'); % this assumes that the user is working on ALBUS
@@ -389,8 +391,6 @@ w = getappdata(0, 'w'); % how many pixels around the current pixel should be fil
 
 thresh=str2double(get(handles.currentThresholdDisplay, 'string')); % use the same threshold as was being used for the previous video
 
-trialdata = getappdata(0, 'trialdata', trials);
-
 [m,n,c,f]=size(data);
 
 calib=getappdata(0, 'calib'); % use the established calibration information
@@ -672,6 +672,10 @@ if strcmpi(file(end-8:end), 'calib.mp4')
     setappdata(0, 'procFrames', procFrames)
     setappdata(0, 'eyetrace', eyetrace)
     
+    % save information important for applying RODs to later files
+    setappdata(0, 'calibAtRODSetting', calib)
+    setappdata(0, 'threshAtRODSetting', thresh)
+    
     % start up the rest of the GUI
     disp('Initializing GUI display')
     
@@ -720,6 +724,13 @@ function newTrialdataButton_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+file = get(handles.currentFileLabel, 'string');
+origTrials = getappdata(0, 'trialdata');
+trialnum = str2double(file(end-6:end-4));
+if isnan(trialnum) % is calibration trial, assume that calibration trial is the last one in the traildata table
+    trialnum = size(origTrials.eyelidpos,1);
+end
+
 % use the ROD's, FEC1Frame, and calib structure to process all the trials
 % from this day
 disp('Generating new trialdata...')
@@ -741,7 +752,7 @@ for i = 1:length(files)
     [rawFrames] = getFramesAndApplyRODs(data, metadata, thresh, calib, f, w);
     
     % use processGivenTrial to do the rest
-    [eyetrace, ~]=processGivenTrial(rawFrames, metadata, thresh, calib, f, w);
+    [eyetrace, procFrames]=processGivenTrial(rawFrames, metadata, thresh, calib, f, w);
     
     % set up new trial table based on this trial's metadata, assumes that
     % eyetrace is the same across all trials. also assumes 200 ms camera
@@ -776,6 +787,11 @@ for i = 1:length(files)
     catch ME
         trials.ITI(i,1) = NaN;
     end
+    
+    if i == trialnum
+        plotMeRawFrames = rawFrames;
+        plotMeProcFrames = procFrames;
+    end
 end
 
 
@@ -785,21 +801,19 @@ save('newTrialdata.mat', 'trials')
 cd(strcat(pwd,'\compressed'))
 disp('Saved new trialdata')
 
-file = get(handles.currentFileLabel, 'string');
-
-origTrials = getappdata(0, 'trialdata');
 
 trialnum = str2double(file(end-6:end-4));
 if isnan(trialnum) % is calibration trial, assume that calibration trial is the last one in the traildata table
     trialnum = size(origTrials.eyelidpos,1);
 end
 
-if isempty(newTrials)
+if isempty(trials.eyelidpos)
     newTrialTrace = [];
 else
     newTrialTrace = trials.eyelidpos(trialnum, :);
 end
-initThreshCheckAdjGUIDisplay(startframe, handles, rawFrames, procFrames, ...
+startframe = str2double(get(handles.FrameNumber, 'string'));
+initThreshCheckAdjGUIDisplay(startframe, handles, plotMeRawFrames, plotMeProcFrames, ...
     eyetrace, thresh, file, origTrials.eyelidpos(trialnum, :), ...
     newTrialTrace)
 

@@ -6,13 +6,21 @@ for i = 1:f
     rawFrames{i,1} = wholeframe;
 end
 setappdata(0, 'originalFrames', rawFrames)
-[eyetrace, procFrames]=processGivenTrial(rawFrames, metadata, thresh, calib, f, w);
 
 rodEffective = getappdata(0, 'rodEffective');
 rodMasks = getappdata(0, 'rodMasks');
 
 % apply masks if they were made
 if ~isempty(rodEffective)
+    
+    % apply the ROD's based on the eyetraces that were used when the RODs were
+    % drawn (derive the eyetrace based on the calibration and threshold
+    % values at the time that the RODs were set)
+    calib = getappdata(0, 'calibAtRODSetting');
+    thresh = getappdata(0, 'threshAtRODSetting');
+    
+    [eyetrace, procFrames]=processGivenTrial(rawFrames, metadata, thresh, calib, f, w);
+
     [r, c] = size(rodEffective);
     for m = 1:r
         rodStart = rodEffective(m,1);
