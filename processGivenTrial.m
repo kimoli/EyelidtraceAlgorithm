@@ -15,6 +15,7 @@ for i=1:f
         eyetrace(i) = 1;
     end
 end
-
+disp(['offset: ', num2str(calib.offset)])
+disp(['scale: ', num2str(calib.scale)])
 
 end

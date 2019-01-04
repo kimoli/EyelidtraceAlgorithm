@@ -80,12 +80,13 @@ baslinecalibtrial = 0;
 if ~isempty(loadMe)
     load(loadMe.name)
     baselines = nan(size(trials.eyelidpos,1),1);
-    for i = 1:size(trials.eyelidpos,1)
+    for i = 1:size(trials.eyelidpos,1)-1 % do not check the calibration trial, which is the last trial in the structure
         baselines(i,1) = mean(trials.eyelidpos(i,1:40));
     end
-    [mval idx] = min(baselines);
+    [mval, idx] = min(baselines);
     if mval<0
         baslinecalibtrial = idx;
+        disp('FOUND BASELINE<0')
     end
 end
 setappdata(0, 'baslinecalibtrial', baslinecalibtrial)
@@ -128,8 +129,10 @@ setappdata(0, 'originalFrames', rawFrames)
 setappdata(0, 'calibFrames', rawFrames)
 setappdata(0, 'rawFrames', rawFrames)
 
+disp(['Baseline trial:', num2str(baslinecalibtrial)])
 calib=processCalibTrial(rawFrames, metadata, thresh, f, w, baslinecalibtrial); % this line gets the calibration values for the day
 setappdata(0,'calib',calib) % save calib to the hidden figure so that it is accessible to all parts of the GUI
+setappdata(0,'origcalib',calib) % save a copy of the original calibration so that you can revert back to it later if the threshold gets changed
 
 % second run though eyetrace value extraction, same video but now calibrated
 [eyetrace, procFrames]=processGivenTrial(rawFrames, metadata, thresh, calib, f, w);
@@ -395,7 +398,7 @@ thresh=str2double(get(handles.currentThresholdDisplay, 'string')); % use the sam
 
 calib=getappdata(0, 'calib'); % use the established calibration information
 
-[rawFrames] = getFramesAndApplyRODs(data, metadata, thresh, calib, f, w);
+[rawFrames] = getFramesAndApplyRODs(data, metadata, f, w);
 setappdata(0, 'rawFrames', rawFrames)
 
 % run though eyetrace value extraction
@@ -448,7 +451,7 @@ thresh=str2double(get(handles.currentThresholdDisplay, 'string')); % use the sam
 
 [m,n,c,f]=size(data);
 
-calib=getappdata(0, 'calib'); % use the established calibration information
+calib=getappdata(0, 'origcalib'); % use the established calibration information
 
 rawFrames = getappdata(0, 'rawFrames');
 % run though eyetrace value extraction
@@ -508,6 +511,7 @@ if strcmpi(file(end-8:end), 'calib.mp4')
     
     disp('Processing calibration file')
     baslinecalibtrial = getappdata(0, 'baslinecalibtrial');
+    disp(['FEC1 frams ', num2str(thisFrame)])
     calib=processCalibTrial(rawFrames, calibMetadata, thresh, f, w, baslinecalibtrial, thisFrame); % this line gets the calibration values for the day
     setappdata(0,'calib',calib) % save calib to the hidden figure so that it is accessible to all parts of the GUI
     
@@ -724,6 +728,8 @@ function newTrialdataButton_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+
+
 file = get(handles.currentFileLabel, 'string');
 origTrials = getappdata(0, 'trialdata');
 trialnum = str2double(file(end-6:end-4));
@@ -749,10 +755,18 @@ for i = 1:length(files)
     calib = getappdata(0, 'calib');
     
     % generate the wholeframes and apply the RODs to the frames
-    [rawFrames] = getFramesAndApplyRODs(data, metadata, thresh, calib, f, w);
+    [rawFrames] = getFramesAndApplyRODs(data, metadata, f, w);
+    if isempty(rawFrames)
+        disp('...rawframes empty')
+        pause
+    end
     
     % use processGivenTrial to do the rest
     [eyetrace, procFrames]=processGivenTrial(rawFrames, metadata, thresh, calib, f, w);
+    if isempty(eyetrace)
+        disp('...eyetrace empty')
+        pause
+    end
     
     % set up new trial table based on this trial's metadata, assumes that
     % eyetrace is the same across all trials. also assumes 200 ms camera
@@ -792,13 +806,26 @@ for i = 1:length(files)
         plotMeRawFrames = rawFrames;
         plotMeProcFrames = procFrames;
     end
+    
+    if isempty(trials)
+        disp('...trials empty')
+        pause
+    end
 end
 
 
 setappdata(0, 'newTrialdata', trials)
-cd('..')
+returnhere = cd;
+cd('..') % for saving to directory on C drive or on server
+%cd('C:\Users\kimol\Documents\matlab output') % for when data is on external hard drive
 save('newTrialdata.mat', 'trials')
-cd(strcat(pwd,'\compressed'))
+rodMasks = getappdata(0, 'rodMasks');
+rodPatches = getappdata(0, 'rodPatches');
+rodEffective = getappdata(0, 'rodEffective');
+calibAtRODSetting = getappdata(0, 'calibAtRODSetting');
+threshAtRODSetting = getappdata(0, 'threshAtRODSetting');
+save('rodInfo.mat', 'rodMasks', 'rodPatches', 'rodEffective', 'calibAtRODSetting', 'threshAtRODSetting')
+cd(returnhere)
 disp('Saved new trialdata')
 
 

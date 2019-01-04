@@ -9,6 +9,7 @@ for i=1:f
 end
 
 if nargin>6
+    %disp(['varargin frame ', num2str(varargin{1})])
     calib=getcalib_knowFEC1(eyetrace, varargin{1}); % this line gets the calibration values for the day
 else
     calib = getcalib(eyetrace);

@@ -1,4 +1,4 @@
-function [rawFrames] = getFramesAndApplyRODs(data, metadata, thresh, calib, f, w)
+function [rawFrames] = getFramesAndApplyRODs(data, metadata, f, w)
 
 rawFrames = {};
 for i = 1:f
@@ -20,14 +20,20 @@ if ~isempty(rodEffective)
     thresh = getappdata(0, 'threshAtRODSetting');
     
     [eyetrace, procFrames]=processGivenTrial(rawFrames, metadata, thresh, calib, f, w);
-
+    %disp(eyetrace)
     [r, c] = size(rodEffective);
     for m = 1:r
         rodStart = rodEffective(m,1);
         rodStop = rodEffective(m,2);
+        if rodStop == 1
+            rodStop = 5;
+        end
+        %disp(['......ROD from ', num2str(rodStart), ' to ', num2str(rodStop)])
         for i=1:f
             if eyetrace(i)>= rodStart && eyetrace(i)<= rodStop % only apply the ROD if it is a valid FEC to be doing so
                 rawFrames{i,1}(rodMasks{m,1}==1)=255; % in grayscale images, 255 corresponds to white
+                %disp(['........',num2str(eyetrace(i))])
+                %disp('........ applying ROD mask')
             end
         end
     end
