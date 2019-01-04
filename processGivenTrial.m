@@ -1,6 +1,6 @@
 function [eyetrace, procFrames]=processGivenTrial(rawFrames, metadata, thresh, calib, f, w)
 
-% SOMEHOW OFFSET.CALIB IS CHANGING BETWEEN PROCESSCALIBTRIAL AND
+% SOMEHOW max(tr)-offset IS CHANGING BETWEEN PROCESSCALIBTRIAL AND
 % PROCESSGIVENTRIAL
 
 eyetrace=zeros(1,length(f));
