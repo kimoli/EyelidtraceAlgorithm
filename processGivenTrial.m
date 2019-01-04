@@ -11,9 +11,9 @@ for i=1:f
     
     % squash values greater than 1 to 1 because FEC should not be sensitive
     % to different eyelid closednesses
-    if eyetrace(i)>1
-        eyetrace(i) = 1;
-    end
+%     if eyetrace(i)>1
+%         eyetrace(i) = 1;
+%     end
 end
 disp(['offset: ', num2str(calib.offset)])
 disp(['scale: ', num2str(calib.scale)])
