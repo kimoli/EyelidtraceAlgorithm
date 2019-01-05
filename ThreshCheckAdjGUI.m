@@ -492,6 +492,7 @@ function newMaxFECFrameButton_Callback(hObject, eventdata, handles)
 % hObject    handle to newMaxFECFrameButton (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+disp('... RESETTING CALIB.SCALE ...')
 
 file = get(handles.currentFileLabel, 'string');
 if strcmpi(file(end-8:end), 'calib.mp4')
@@ -511,7 +512,7 @@ if strcmpi(file(end-8:end), 'calib.mp4')
     
     disp('Processing calibration file')
     baslinecalibtrial = getappdata(0, 'baslinecalibtrial');
-    disp(['FEC1 frams ', num2str(thisFrame)])
+    disp(['FEC1 frame ', num2str(thisFrame)])
     calib=processCalibTrial(rawFrames, calibMetadata, thresh, f, w, baslinecalibtrial, thisFrame); % this line gets the calibration values for the day
     setappdata(0,'calib',calib) % save calib to the hidden figure so that it is accessible to all parts of the GUI
     

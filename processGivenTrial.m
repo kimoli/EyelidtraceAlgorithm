@@ -14,9 +14,10 @@ for i=1:f
     
     % squash values greater than 1 to 1 because FEC should not be sensitive
     % to different eyelid closednesses
-%     if eyetrace(i)>1
-%         eyetrace(i) = 1;
-%     end
+    % this assumes that the calib.scale is set to a complete eyelid closure
+    if eyetrace(i)>1
+        eyetrace(i) = 1;
+    end
 end
 disp(['processGivenTrial tr max:', num2str(max(tr))])
 disp(['processGivenTrial tr max-offset:', num2str(max(tr)-calib.offset)])
