@@ -744,6 +744,7 @@ disp('Generating new trialdata...')
 % cycle through all the days
 files = dir('*.mp4');
 trials = [];
+calib = getappdata(0, 'calib');
 for i = 1:length(files)
     disp(strcat('...processing trial', num2str(i)))
     
@@ -753,7 +754,6 @@ for i = 1:length(files)
     [~,~,~,f]=size(data);
     w = getappdata(0, 'w');
     thresh=str2double(get(handles.currentThresholdDisplay, 'string'));
-    calib = getappdata(0, 'calib');
     
     % generate the wholeframes and apply the RODs to the frames
     [rawFrames] = getFramesAndApplyRODs(data, metadata, f, w);
@@ -826,6 +826,10 @@ rodEffective = getappdata(0, 'rodEffective');
 calibAtRODSetting = getappdata(0, 'calibAtRODSetting');
 threshAtRODSetting = getappdata(0, 'threshAtRODSetting');
 save('rodInfo.mat', 'rodMasks', 'rodPatches', 'rodEffective', 'calibAtRODSetting', 'threshAtRODSetting')
+
+offsetTrial = getappdata(0, 'baslinecalibtrial');
+FEC1Frame = getappdata(0, 'FEC1Frame');
+save('reCalib.mat', 'calib', 'offsetTrial', 'FEC1Frame')
 cd(returnhere)
 disp('Saved new trialdata')
 
