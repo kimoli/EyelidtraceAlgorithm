@@ -71,8 +71,15 @@ for m = 1:length(mice)
                 saveNoCRList = 0;
             end
             
+            if exist('reCalib.mat', 'file')==2
+                load('reCalib.mat')
+                saveReCalib = 1;
+            else
+                saveReCalib = 0;
+            end
             
-            if saveTrials==1 || saveNoCRList == 1
+            
+            if saveTrials==1 || saveNoCRList == 1 || saveReCalib ==1
                 %pause
                 cd(backupDir)
                 
@@ -88,13 +95,17 @@ for m = 1:length(mice)
                 end
                 cd(bckupDayFolder)
                 
-                if saveTrials
+                if saveTrials && exist('newTrialdata.mat', 'file') == 0
                     save('newTrialdata.mat', 'trials')
                     save('rodInfo.mat', 'rodMasks', 'rodPatches', 'rodEffective', 'calibAtRODSetting', 'threshAtRODSetting')
                 end
                 
-                if saveNoCRList
+                if saveNoCRList && exist(noCRTrialFilename, 'file') == 0
                     save(noCRTrialFilename, 'markedTrials')
+                end
+                
+                if saveReCalib && exist('reCalib.mat', 'file') == 0
+                    save('reCalib.mat', 'calib', 'offsetTrial', 'FEC1Frame')
                 end
             end
             
