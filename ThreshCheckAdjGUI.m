@@ -639,7 +639,13 @@ if strcmpi(file(end-8:end), 'calib.mp4')
     
     for m = 1:r
         rodStart = rodEffective(m,1);
+        if rodStart == 0
+            rodStart = -1;
+        end
         rodStop = rodEffective(m,2);
+        if rodStop == 1
+            rodStop = 5;
+        end
         
         for i=1:f
             if eyetrace(i)>= rodStart && eyetrace(i)<= rodStop % only apply the ROD if it is a valid FEC to be doing so

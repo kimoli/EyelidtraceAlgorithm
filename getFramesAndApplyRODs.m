@@ -24,6 +24,9 @@ if ~isempty(rodEffective)
     [r, c] = size(rodEffective);
     for m = 1:r
         rodStart = rodEffective(m,1);
+        if rodStart == 0
+            rodStart = -1;
+        end
         rodStop = rodEffective(m,2);
         if rodStop == 1
             rodStop = 5;
