@@ -19,9 +19,9 @@ for i=1:f
         eyetrace(i) = 1;
     end
 end
-disp(['processGivenTrial tr max:', num2str(max(tr))])
-disp(['processGivenTrial tr max-offset:', num2str(max(tr)-calib.offset)])
-disp(['offset: ', num2str(calib.offset)])
-disp(['scale: ', num2str(calib.scale)])
+% disp(['processGivenTrial tr max:', num2str(max(tr))])
+% disp(['processGivenTrial tr max-offset:', num2str(max(tr)-calib.offset)])
+% disp(['offset: ', num2str(calib.offset)])
+% disp(['scale: ', num2str(calib.scale)])
 
 end
