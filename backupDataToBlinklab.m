@@ -47,7 +47,7 @@ for m = 1:length(mice)
                 % double check to make sure that newTrialdata is consistent
                 % with the old trialdata
                 oldTrials = load('trialdata.mat');
-                if strcmpi(cd,'E:\data\behavior\OK159\180228')
+                if strcmpi(cd,'G:\data\behavior\OK159\180228')
                     % there is a problem with this day that i need to
                     % revisit later
                 elseif sum(oldTrials.trials.c_csnum-trials.c_csnum) ||...
