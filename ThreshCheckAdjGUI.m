@@ -785,10 +785,18 @@ for i = 1:length(files)
     trials.c_isi(i,1) = metadata.stim.c.isi;
     trials.c_csnum(i,1) = metadata.stim.c.csnum;
     trials.c_csdur(i,1) = metadata.stim.c.csdur;
-    trials.c_usnum(i,1) = metadata.stim.c.usnum;
+    if isfield(metadata.stim.c, 'usnum')
+        trials.c_usnum(i,1) = metadata.stim.c.usnum;
+    else
+        trials.c_usnum(i,1) = 3; % in the TDT ephys rig, there is no usnum field since the only US possible is the puff
+    end
     trials.c_usdur(i,1) = metadata.stim.c.usdur;
     trials.laser.delay(i,1) = metadata.stim.l.delay;
-    trials.laser.dur(i,1) = metadata.stim.l.dur;
+    if isfield(metadata.stim.l, 'dur')
+        trials.laser.dur(i,1) = metadata.stim.l.dur;
+    else
+        trials.laser.dur(i,1) = metadata.stim.l.traindur; % tdt version calls this traindur not dur
+    end
     trials.laser.amp(i,1) = metadata.stim.l.amp;
     trials.laser.freq(i,1) = metadata.stim.l.freq;
     trials.laser.pulsewidth(i,1) = metadata.stim.l.pulsewidth;
