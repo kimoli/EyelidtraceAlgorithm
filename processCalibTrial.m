@@ -60,6 +60,7 @@ if baslinecalibtrial>0
         trialnum = strcat('0', trialnum);
     end
     
+    
     % fetch the trial with the better baseline value
     newbaselinetrialinfo = dir(strcat('*',trialnum,'.mp4'));
     [bldata,~]=loadCompressed(newbaselinetrialinfo.name);
@@ -67,6 +68,7 @@ if baslinecalibtrial>0
     tr = nan(1,f);
     for i = 1:f
         wholeframe=bldata(:,:,1,i);   % make it a grayscale image in case it's not (this assumes all color channels have roughtly the same value)
+        rawFramesNewBL{i,1} = wholeframe;
         binimage=medfilt2(wholeframe,[w w]) > thresh*256;
         eyeimage=binimage.*metadata.cam.mask;
         tr(i)=sum(eyeimage(:));
@@ -84,9 +86,10 @@ if baslinecalibtrial>0
                 rodStop = 5;
             end
             %disp(['......ROD from ', num2str(rodStart), ' to ', num2str(rodStop)])
+            
             for i=1:f
                 if eyetrace(i)>= rodStart && eyetrace(i)<= rodStop % only apply the ROD if it is a valid FEC to be doing so
-                    rawFrames{i,1}(rodMasks{m,1}==1)=255; % in grayscale images, 255 corresponds to white
+                    rawFramesNewBL{i,1}(rodMasks{m,1}==1)=255; % in grayscale images, 255 corresponds to white
                     %disp(['........',num2str(eyetrace(i))])
                     %disp('........ applying ROD mask')
                 end
@@ -96,7 +99,7 @@ if baslinecalibtrial>0
         eyetrace=zeros(1,length(f));
         tr = nan(1,f);
         for i=1:f
-            binimage=medfilt2(rawFrames{i,1},[w w]) > thresh*256;
+            binimage=medfilt2(rawFramesNewBL{i,1},[w w]) > thresh*256;
             eyeimage=binimage.*metadata.cam.mask;
             tr(i)=sum(eyeimage(:));
             eyetrace(i)=(tr(i)-0)./1;
