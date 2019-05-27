@@ -85,13 +85,24 @@ if baslinecalibtrial>0
             if rodStop == 1
                 rodStop = 5;
             end
-            %disp(['......ROD from ', num2str(rodStart), ' to ', num2str(rodStop)])
+            disp(['......ROD from ', num2str(rodStart), ' to ', num2str(rodStop)])
             
+            %% this isn't working because the ROD application requires the eyetrace values to be calibrated by the offset and scale...
+            % probably need to go through the whole calibration process,
+            % then apply the RODs to the frames and then go through the
+            % calibration process again
             for i=1:f
                 if eyetrace(i)>= rodStart && eyetrace(i)<= rodStop % only apply the ROD if it is a valid FEC to be doing so
+                    disp('ROD BEING APPLIED TO NEW BASELINE')
                     rawFramesNewBL{i,1}(rodMasks{m,1}==1)=255; % in grayscale images, 255 corresponds to white
                     %disp(['........',num2str(eyetrace(i))])
                     %disp('........ applying ROD mask')
+                end
+                
+                % temporary solution to get rid of any artifacts that
+                % persist through the video
+                if rodStart==-1 && rodStop==5
+                    rawFramesNewBL{i,1}(rodMasks{m,1}==1)=255; % in grayscale images, 255 corresponds to white
                 end
             end
         end

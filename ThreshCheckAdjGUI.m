@@ -754,68 +754,85 @@ calib = getappdata(0, 'calib');
 for i = 1:length(files)
     disp(strcat('...processing trial', num2str(i)))
     
-    [data,metadata,encoder]=loadCompressed(files(i,1).name);
-    
-    % get stored info from the GUI and the hidden figure
-    [~,~,~,f]=size(data);
-    w = getappdata(0, 'w');
-    thresh=str2double(get(handles.currentThresholdDisplay, 'string'));
-    
-    % generate the wholeframes and apply the RODs to the frames
-    [rawFrames] = getFramesAndApplyRODs(data, metadata, f, w);
-    if isempty(rawFrames)
-        disp('...rawframes empty')
-        pause
-    end
-    
-    % use processGivenTrial to do the rest
-    [eyetrace, procFrames]=processGivenTrial(rawFrames, metadata, thresh, calib, f, w);
-    if isempty(eyetrace)
-        disp('...eyetrace empty')
-        pause
-    end
-    
-    % set up new trial table based on this trial's metadata, assumes that
-    % eyetrace is the same across all trials. also assumes 200 ms camera
-    % pretime and 5 ms frame duration
-    trials.eyelidpos(i,1:length(eyetrace)) = eyetrace;
-    maxtm = (length(eyetrace) - (0.200/0.005))*0.005;
-    trials.tm(i,1:length(eyetrace)) = [-0.2:0.005:(maxtm-0.005)];
-    trials.fnames{i,1} = files(i,1).name;
-    trials.c_isi(i,1) = metadata.stim.c.isi;
-    trials.c_csnum(i,1) = metadata.stim.c.csnum;
-    trials.c_csdur(i,1) = metadata.stim.c.csdur;
-    if isfield(metadata.stim.c, 'usnum')
-        trials.c_usnum(i,1) = metadata.stim.c.usnum;
-    else
-        trials.c_usnum(i,1) = 3; % in the TDT ephys rig, there is no usnum field since the only US possible is the puff
-    end
-    trials.c_usdur(i,1) = metadata.stim.c.usdur;
-    trials.laser.delay(i,1) = metadata.stim.l.delay;
-    if isfield(metadata.stim.l, 'dur')
-        trials.laser.dur(i,1) = metadata.stim.l.dur;
-    else
-        trials.laser.dur(i,1) = metadata.stim.l.traindur; % tdt version calls this traindur not dur
-    end
-    trials.laser.amp(i,1) = metadata.stim.l.amp;
-    trials.laser.freq(i,1) = metadata.stim.l.freq;
-    trials.laser.pulsewidth(i,1) = metadata.stim.l.pulsewidth;
-    trials.trialnum = i; % assumes that matlab is going through files in alphanumeric order
-    trials.type{i,1} = metadata.stim.type;
-    trials.session_of_day(i,1) = str2double(files(i,1).name(end-9:end-8)); % assumes that filename uses the same format as OKim in 2018
-    if isstruct(encoder) % will happen on calibration trial as there is no encoder structure
-        trials.encoder_displacement(i,1:length(encoder.displacement)) = encoder.displacement';
-        trials.encoder_counts(i,1:length(encoder.counts)) = encoder.counts';
-    else % assumes encoder sampling rate is same as eyelid
-        trials.encoder_displacement(i,1:length(eyetrace)) = nan(1,length(eyetrace));
-        trials.encoder_counts(i,1:length(eyetrace)) = nan(1,length(eyetrace));
-    end
-    
     try
-        trials.ITI(i,1) = metadata.stim.c.ITI;
+        [data,metadata,encoder]=loadCompressed(files(i,1).name);
+        corrupted = 0;
     catch ME
-        trials.ITI(i,1) = NaN;
+        disp('......VIDEO FILE CORRUPTED')
+        corrupted = 1;
     end
+    
+    if ~corrupted
+        % get stored info from the GUI and the hidden figure
+        [~,~,~,f]=size(data);
+        w = getappdata(0, 'w');
+        thresh=str2double(get(handles.currentThresholdDisplay, 'string'));
+        
+        % generate the wholeframes and apply the RODs to the frames
+        [rawFrames] = getFramesAndApplyRODs(data, metadata, f, w);
+        if isempty(rawFrames)
+            disp('...rawframes empty')
+            pause
+        end
+        
+        % use processGivenTrial to do the rest
+        [eyetrace, procFrames]=processGivenTrial(rawFrames, metadata, thresh, calib, f, w);
+        if isempty(eyetrace)
+            disp('...eyetrace empty')
+            pause
+        end
+        
+        % set up new trial table based on this trial's metadata, assumes that
+        % eyetrace is the same across all trials. also assumes 200 ms camera
+        % pretime and 5 ms frame duration
+        trials.eyelidpos(i,1:length(eyetrace)) = eyetrace;
+        maxtm = (length(eyetrace) - (0.200/0.005))*0.005;
+        trials.tm(i,1:length(eyetrace)) = [-0.2:0.005:(maxtm-0.005)];
+        trials.fnames{i,1} = files(i,1).name;
+        trials.c_isi(i,1) = metadata.stim.c.isi;
+        trials.c_csnum(i,1) = metadata.stim.c.csnum;
+        trials.c_csdur(i,1) = metadata.stim.c.csdur;
+        if isfield(metadata.stim.c, 'usnum')
+            trials.c_usnum(i,1) = metadata.stim.c.usnum;
+        else
+            trials.c_usnum(i,1) = 3; % in the TDT ephys rig, there is no usnum field since the only US possible is the puff
+        end
+        trials.c_usdur(i,1) = metadata.stim.c.usdur;
+        trials.laser.delay(i,1) = metadata.stim.l.delay;
+        if isfield(metadata.stim.l, 'dur')
+            trials.laser.dur(i,1) = metadata.stim.l.dur;
+        else
+            trials.laser.dur(i,1) = metadata.stim.l.traindur; % tdt version calls this traindur not dur
+        end
+        trials.laser.amp(i,1) = metadata.stim.l.amp;
+        if isfield(metadata.stim.l, 'freq')
+            trials.laser.freq(i,1) = metadata.stim.l.freq;
+        else
+            trials.laser.freq(i,1) = 1;
+        end
+        if isfield(metadata.stim.l, 'pulsewidth')
+            trials.laser.pulsewidth(i,1) = metadata.stim.l.pulsewidth;
+        else
+            trials.laser.pulsewidth(i,1) = metadata.stim.l.dur;
+        end
+        trials.trialnum = i; % assumes that matlab is going through files in alphanumeric order
+        trials.type{i,1} = metadata.stim.type;
+        trials.session_of_day(i,1) = str2double(files(i,1).name(end-9:end-8)); % assumes that filename uses the same format as OKim in 2018
+        if isstruct(encoder) % will happen on calibration trial as there is no encoder structure
+            trials.encoder_displacement(i,1:length(encoder.displacement)) = encoder.displacement';
+            trials.encoder_counts(i,1:length(encoder.counts)) = encoder.counts';
+        else % assumes encoder sampling rate is same as eyelid
+            trials.encoder_displacement(i,1:length(eyetrace)) = nan(1,length(eyetrace));
+            trials.encoder_counts(i,1:length(eyetrace)) = nan(1,length(eyetrace));
+        end
+        
+        try
+            trials.ITI(i,1) = metadata.stim.c.ITI;
+        catch ME
+            trials.ITI(i,1) = NaN;
+        end
+    end
+    
     
     if i == trialnum
         plotMeRawFrames = rawFrames;
