@@ -25,7 +25,7 @@ function varargout = ThreshCheckAdjGUI(varargin)
 
 % Edit the above text to modify the response to help ThreshCheckAdjGUI
 
-% Last Modified by GUIDE v2.5 12-Oct-2019 11:50:17
+% Last Modified by GUIDE v2.5 12-Oct-2019 17:40:48
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -69,6 +69,7 @@ setappdata(0, 'FEC1Frame', [])
 setappdata(0, 'calibAtRODSetting', [])
 setappdata(0, 'threshAtRODSetting', [])
 setappdata(0, 'contrastIncCount', 0)
+setappdata(0, 'brightIncCount', 0)
 
 % tell user to select directory
 dname = uigetdir('L:\\users\okim\behavior', 'Select an animal and a day.'); % this assumes that the user is working on ALBUS
@@ -409,6 +410,15 @@ for c = 1:contCount
         rawFrames{i,1} = imadjust(rawFrames{i,1});
     end
 end
+
+% change brightness based on calibration trial
+brightCount = getappdata(0,'brightIncCount');
+        [m,n,c,f]=size(data);
+        for c = 1:brightCount
+            for t = 1:f
+                rawFrames{t,1} = rawFrames{t,1}+10;
+            end
+        end
 
 % save frames for this video to the main window
 setappdata(0, 'rawFrames', rawFrames)
@@ -796,6 +806,15 @@ for i = 1:length(files)
             end
         end
         
+        % change the brightness based on the calibration trial
+        brightCount = getappdata(0,'brightIncCount');
+        [m,n,c,f]=size(data);
+        for c = 1:brightCount
+            for t = 1:f
+                rawFrames{t,1} = rawFrames{t,1}+10;
+            end
+        end
+        
         % use processGivenTrial to do the rest
         [eyetrace, procFrames]=processGivenTrial(rawFrames, metadata, thresh, calib, f, w);
         if isempty(eyetrace)
@@ -900,140 +919,7 @@ if mval<0
     baslinecalibtrial = idx;
     disp('FOUND BASELINE<0')
     trials.eyelidpos = (trials.eyelidpos-mval)./(1-mval);
-    
-%     calib=processCalibTrial(rawFrames, metadata, thresh, f, w, baslinecalibtrial); % this line gets the calibration values for the day
-%     setappdata(0,'calib',calib) % save calib to the hidden figure so that it is accessible to all parts of the GUI
-%     setappdata(0,'origcalib',calib)
-%     
-%     disp('Generating new trialdata...')
-%     % cycle through all the days
-%     files = dir('*.mp4');
-%     trials = [];
-%     calib = getappdata(0, 'calib');
-%     for i = 1:length(files)
-%         disp(strcat('...processing trial', num2str(i)))
-%         
-%         try
-%             [data,metadata,encoder]=loadCompressed(files(i,1).name);
-%             corrupted = 0;
-%         catch ME
-%             disp('......VIDEO FILE CORRUPTED')
-%             corrupted = 1;
-%         end
-%         
-%         if ~corrupted
-%             % get stored info from the GUI and the hidden figure
-%             [~,~,~,f]=size(data);
-%             w = getappdata(0, 'w');
-%             thresh=str2double(get(handles.currentThresholdDisplay, 'string'));
-%             
-%             % generate the wholeframes and apply the RODs to the frames
-%             [rawFrames] = getFramesAndApplyRODs(data, metadata, f, w);
-%             if isempty(rawFrames)
-%                 disp('...rawframes empty')
-%                 pause
-%             end
-%             
-%             % change contrast based on calibration trial
-%             contCount = getappdata(0,'contrastIncCount');
-%             [m,n,c,f]=size(data);
-%             for c = 1:contCount
-%                 for t = 1:f
-%                     rawFrames{t,1} = imadjust(rawFrames{t,1});
-%                 end
-%             end
-%             
-%             % use processGivenTrial to do the rest
-%             [eyetrace, procFrames]=processGivenTrial(rawFrames, metadata, thresh, calib, f, w);
-%             if isempty(eyetrace)
-%                 disp('...eyetrace empty')
-%                 pause
-%             end
-%             
-%             if i > 1
-%                 prevLength = size(trials.eyelidpos,2);
-%             else
-%                 prevLength = NaN;
-%             end
-%             
-%             maxtm = (length(eyetrace) - (0.200/0.005))*0.005;
-%             
-%             if ~isnan(prevLength)
-%                 if prevLength > length(eyetrace)
-%                     tempvals = nan(1, prevLength);
-%                     tempvals(1, 1:length(eyetrace)) = eyetrace;
-%                 elseif prevLength < length(eyetrace)
-%                     tempvals = eyetrace;
-%                     while size(trials.eyelidpos,2) < length(eyetrace)
-%                         trials.eyelidpos = [trials.eyelidpos, nan(size(trials.eyelidpos,1),1)];
-%                     end
-%                 else
-%                     tempvals = eyetrace;
-%                 end
-%             else
-%                 tempvals = eyetrace;
-%             end
-%             
-%             trials.eyelidpos(i,1:length(tempvals)) = tempvals;
-%             clear tempvals
-%             
-%             trials.tm(i,1:length(eyetrace)) = [-0.2:0.005:(maxtm-0.005)];
-%             trials.fnames{i,1} = files(i,1).name;
-%             trials.c_isi(i,1) = metadata.stim.c.isi;
-%             trials.c_csnum(i,1) = metadata.stim.c.csnum;
-%             trials.c_csdur(i,1) = metadata.stim.c.csdur;
-%             if isfield(metadata.stim.c, 'usnum')
-%                 trials.c_usnum(i,1) = metadata.stim.c.usnum;
-%             else
-%                 trials.c_usnum(i,1) = 3; % in the TDT ephys rig, there is no usnum field since the only US possible is the puff
-%             end
-%             trials.c_usdur(i,1) = metadata.stim.c.usdur;
-%             trials.laser.delay(i,1) = metadata.stim.l.delay;
-%             if isfield(metadata.stim.l, 'dur')
-%                 trials.laser.dur(i,1) = metadata.stim.l.dur;
-%             else
-%                 trials.laser.dur(i,1) = metadata.stim.l.traindur; % tdt version calls this traindur not dur
-%             end
-%             trials.laser.amp(i,1) = metadata.stim.l.amp;
-%             if isfield(metadata.stim.l, 'freq')
-%                 trials.laser.freq(i,1) = metadata.stim.l.freq;
-%             else
-%                 trials.laser.freq(i,1) = 1;
-%             end
-%             if isfield(metadata.stim.l, 'pulsewidth')
-%                 trials.laser.pulsewidth(i,1) = metadata.stim.l.pulsewidth;
-%             else
-%                 trials.laser.pulsewidth(i,1) = metadata.stim.l.dur;
-%             end
-%             trials.trialnum = i; % assumes that matlab is going through files in alphanumeric order
-%             trials.type{i,1} = metadata.stim.type;
-%             trials.session_of_day(i,1) = str2double(files(i,1).name(end-9:end-8)); % assumes that filename uses the same format as OKim in 2018
-%             if isstruct(encoder) % will happen on calibration trial as there is no encoder structure
-%                 trials.encoder_displacement(i,1:length(encoder.displacement)) = encoder.displacement';
-%                 trials.encoder_counts(i,1:length(encoder.counts)) = encoder.counts';
-%             else % assumes encoder sampling rate is same as eyelid
-%                 trials.encoder_displacement(i,1:length(eyetrace)) = nan(1,length(eyetrace));
-%                 trials.encoder_counts(i,1:length(eyetrace)) = nan(1,length(eyetrace));
-%             end
-%             
-%             try
-%                 trials.ITI(i,1) = metadata.stim.c.ITI;
-%             catch ME
-%                 trials.ITI(i,1) = NaN;
-%             end
-%         end
-%         
-%         
-%         if i == trialnum
-%             plotMeRawFrames = rawFrames;
-%             plotMeProcFrames = procFrames;
-%         end
-%         
-%         if isempty(trials)
-%             disp('...trials empty')
-%             pause
-%         end
-%     end
+   
 end
 setappdata(0, 'baslinecalibtrial', baslinecalibtrial)
 
@@ -1054,6 +940,7 @@ offsetTrial = getappdata(0, 'baslinecalibtrial');
 FEC1Frame = getappdata(0, 'FEC1Frame');
 save('reCalib.mat', 'calib', 'offsetTrial', 'FEC1Frame')
 save('contrastCount.mat', 'contCount')
+save('brightCount.mat', 'brightCount')
 cd(returnhere)
 disp('Saved new trialdata')
 
@@ -1106,9 +993,124 @@ if strcmpi(file(end-8:end), 'calib.mp4')
     data = getappdata(0, 'calibData');
     
     [m,n,c,f]=size(data);
-        
+    
+    if contCount == 0
+        for i = 1:f
+            rawFrames{i,1}=imadjust(rawFrames{i,1});
+        end
+    else
+        if contCount == 0
+            for i = 1:f
+                rawFrames{i,1}=imadjust(rawFrames{i,1});
+            end
+        else
+            minval = min(min(rawFrames{1,1}));
+            maxval = max(max(rawFrames{1,1}));
+            for i = 2:f
+                temp = min(min(rawFrames{i,1}));
+                if temp<minval
+                    minval = temp;
+                end
+                
+                temp = max(max(rawFrames{i,1}));
+                if temp > maxval
+                    maxval = temp;
+                end
+            end
+            
+            for i = 1:f
+                rawFrames{i,1}=imadjust(rawFrames{i,1},[0.1 0.9], [0 1]);
+            end
+        end
+    end
+    setappdata(0, 'rawFrames', rawFrames)
+    setappdata(0, 'calibFrames', rawFrames)
+    
+    % recalibrate
+    w = getappdata(0, 'w'); % how many pixels around the current pixel should be filtered together
+    data = getappdata(0, 'calibData');
+    metadata = getappdata(0, 'calibMetadata');
+    thresh=str2double(get(handles.currentThresholdDisplay, 'string')); % just set up using the threshold from calibration
+    
+    [m,n,c,f]=size(data);
+    
+    disp('Processing calibration file')
+    % for calibration processing, have to do one run through without specific calibration data
+    baslinecalibtrial = getappdata(0, 'baslinecalibtrial');
+    FEC1Frame = getappdata(0, 'FEC1Frame');
+    if isempty(FEC1Frame)
+        calib=processCalibTrial(rawFrames, metadata, thresh, f, w, baslinecalibtrial); % this line gets the calibration values for the day
+    else
+        calib=processCalibTrial(rawFrames, metadata, thresh, f, w, baslinecalibtrial, FEC1Frame); % this line gets the calibration values for the day
+    end
+    setappdata(0,'calib',calib) % save calib to the hidden figure so that it is accessible to all parts of the GUI
+    
+    % second run though eyetrace value extraction, same video but now calibrated
+    [eyetrace, procFrames]=processGivenTrial(rawFrames, metadata, thresh, calib, f, w);
+    
+    % save the frames and the eyetrace to the hidden figure
+    setappdata(0, 'procFrames', procFrames)
+    setappdata(0, 'eyetrace', eyetrace)
+    
+    % save information important for applying RODs to later files
+    setappdata(0, 'calibAtRODSetting', calib)
+    setappdata(0, 'threshAtRODSetting', thresh)
+    
+    % start up the rest of the GUI
+    disp('Initializing GUI display')
+    
+    startframe = str2double(get(handles.FrameNumber, 'string'));
+    
+    file = get(handles.currentFileLabel, 'string');
+    
+    origTrials = getappdata(0, 'trialdata');
+    newTrials = getappdata(0, 'newTrialdata');
+    
+    trialnum = str2double(file(end-6:end-4));
+    if isnan(trialnum) % is calibration trial, assume that calibration trial is the last one in the traildata table
+        trialnum = size(origTrials.eyelidpos,1);
+    end
+    
+    if isempty(newTrials)
+        newTrialTrace = [];
+    else
+        newTrialTrace = newTrials.eyelidpos(trialnum, :);
+    end
+    initThreshCheckAdjGUIDisplay(startframe, handles, rawFrames, procFrames, ...
+        eyetrace, thresh, file, origTrials.eyelidpos(trialnum, :), ...
+        newTrialTrace)
+    
+    disp('GUI setup complete')
+else
+    disp('ONLY PERMITTED TO CHANGE CONTRAST ON THE CALIBRATION TRIAL')
+end
+
+
+
+% --- Executes on button press in brightnessButton.
+function brightnessButton_Callback(hObject, eventdata, handles)
+% hObject    handle to brightnessButton (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+file = get(handles.currentFileLabel, 'string');
+if strcmpi(file(end-8:end), 'calib.mp4')
+    brightCount = getappdata(0,'brightIncCount');
+    brightCount = brightCount + 1;
+    setappdata(0, 'brightIncCount', brightCount) % increment contrast counter so can apply to all videos later
+    
+    % mask out the raw eyelid frame so that the mask will apply across all
+    % later applications regardless of the changed eyelid position values
+    rawFrames = getappdata(0, 'rawFrames');
+    rodMasks = getappdata(0, 'rodMasks');
+    calib = getappdata(0, 'calib');
+    eyetrace = getappdata(0, 'eyetrace');
+    data = getappdata(0, 'calibData');
+    
+    [m,n,c,f]=size(data);
+    
     for i = 1:f
-       rawFrames{i,1}=imadjust(rawFrames{i,1}); 
+        rawFrames{i,1}=rawFrames{i,1}+10;
     end
     
     setappdata(0, 'rawFrames', rawFrames)
@@ -1170,5 +1172,5 @@ if strcmpi(file(end-8:end), 'calib.mp4')
     
     disp('GUI setup complete')
 else
-    disp('ONLY PERMITTED TO CHANGE CONTRAST ON THE CALIBRATION TRIAL')
+    disp('ONLY PERMITTED TO CHANGE BRIGHTNESS ON THE CALIBRATION TRIAL')
 end
