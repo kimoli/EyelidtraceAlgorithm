@@ -25,7 +25,7 @@ function varargout = ThreshCheckAdjGUI(varargin)
 
 % Edit the above text to modify the response to help ThreshCheckAdjGUI
 
-% Last Modified by GUIDE v2.5 29-Nov-2018 18:00:06
+% Last Modified by GUIDE v2.5 12-Oct-2019 11:06:09
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -68,6 +68,7 @@ setappdata(0, 'rodEffective', [])
 setappdata(0, 'FEC1Frame', [])
 setappdata(0, 'calibAtRODSetting', [])
 setappdata(0, 'threshAtRODSetting', [])
+setappdata(0, 'contrastIncCount', 0)
 
 % tell user to select directory
 dname = uigetdir('L:\\users\okim\behavior', 'Select an animal and a day.'); % this assumes that the user is working on ALBUS
@@ -399,6 +400,17 @@ thresh=str2double(get(handles.currentThresholdDisplay, 'string')); % use the sam
 calib=getappdata(0, 'calib'); % use the established calibration information
 
 [rawFrames] = getFramesAndApplyRODs(data, metadata, f, w);
+
+% change contrast based on calibration trial
+contCount = getappdata(0,'contrastIncCount');
+[m,n,c,f]=size(data);
+for c = 1:contCount
+    for i = 1:f
+        rawFrames{i,1} = imadjust(rawFrames{i,1});
+    end
+end
+
+% save frames for this video to the main window
 setappdata(0, 'rawFrames', rawFrames)
 
 % run though eyetrace value extraction
@@ -775,6 +787,15 @@ for i = 1:length(files)
             pause
         end
         
+        % change contrast based on calibration trial
+        contCount = getappdata(0,'contrastIncCount');
+        [m,n,c,f]=size(data);
+        for c = 1:contCount
+            for t = 1:f
+                rawFrames{t,1} = imadjust(rawFrames{t,1});
+            end
+        end
+        
         % use processGivenTrial to do the rest
         [eyetrace, procFrames]=processGivenTrial(rawFrames, metadata, thresh, calib, f, w);
         if isempty(eyetrace)
@@ -883,6 +904,7 @@ save('rodInfo.mat', 'rodMasks', 'rodPatches', 'rodEffective', 'calibAtRODSetting
 offsetTrial = getappdata(0, 'baslinecalibtrial');
 FEC1Frame = getappdata(0, 'FEC1Frame');
 save('reCalib.mat', 'calib', 'offsetTrial', 'FEC1Frame')
+save('contrastCount.mat', 'contCount')
 cd(returnhere)
 disp('Saved new trialdata')
 
@@ -911,3 +933,93 @@ initThreshCheckAdjGUIDisplay(startframe, handles, plotMeRawFrames, plotMeProcFra
     newTrialTrace)
 
 
+
+
+% --- Executes on button press in contrastButton.
+function contrastButton_Callback(hObject, eventdata, handles)
+% hObject    handle to contrastButton (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+
+file = get(handles.currentFileLabel, 'string');
+if strcmpi(file(end-8:end), 'calib.mp4')
+    contCount = getappdata(0,'contrastIncCount');
+    contCount = contCount + 1;
+    setappdata(0, 'contrastIncCount', contCount) % increment contrast counter so can apply to all videos later
+    
+    % mask out the raw eyelid frame so that the mask will apply across all
+    % later applications regardless of the changed eyelid position values
+    rawFrames = getappdata(0, 'rawFrames');
+    rodMasks = getappdata(0, 'rodMasks');
+    calib = getappdata(0, 'calib');
+    eyetrace = getappdata(0, 'eyetrace');
+    data = getappdata(0, 'calibData');
+    
+    [m,n,c,f]=size(data);
+        
+    for i = 1:f
+       rawFrames{i,1}=imadjust(rawFrames{i,1}); 
+    end
+    
+    setappdata(0, 'rawFrames', rawFrames)
+    setappdata(0, 'calibFrames', rawFrames)
+    
+    % recalibrate
+    w = getappdata(0, 'w'); % how many pixels around the current pixel should be filtered together
+    data = getappdata(0, 'calibData');
+    metadata = getappdata(0, 'calibMetadata');
+    thresh=str2double(get(handles.currentThresholdDisplay, 'string')); % just set up using the threshold from calibration
+    
+    [m,n,c,f]=size(data);
+    
+    disp('Processing calibration file')
+    % for calibration processing, have to do one run through without specific calibration data
+    baslinecalibtrial = getappdata(0, 'baslinecalibtrial');
+    FEC1Frame = getappdata(0, 'FEC1Frame');
+    if isempty(FEC1Frame)
+        calib=processCalibTrial(rawFrames, metadata, thresh, f, w, baslinecalibtrial); % this line gets the calibration values for the day
+    else
+        calib=processCalibTrial(rawFrames, metadata, thresh, f, w, baslinecalibtrial, FEC1Frame); % this line gets the calibration values for the day
+    end
+    setappdata(0,'calib',calib) % save calib to the hidden figure so that it is accessible to all parts of the GUI
+    
+    % second run though eyetrace value extraction, same video but now calibrated
+    [eyetrace, procFrames]=processGivenTrial(rawFrames, metadata, thresh, calib, f, w);
+    
+    % save the frames and the eyetrace to the hidden figure
+    setappdata(0, 'procFrames', procFrames)
+    setappdata(0, 'eyetrace', eyetrace)
+    
+    % save information important for applying RODs to later files
+    setappdata(0, 'calibAtRODSetting', calib)
+    setappdata(0, 'threshAtRODSetting', thresh)
+    
+    % start up the rest of the GUI
+    disp('Initializing GUI display')
+    
+    startframe = str2double(get(handles.FrameNumber, 'string'));
+    
+    file = get(handles.currentFileLabel, 'string');
+    
+    origTrials = getappdata(0, 'trialdata');
+    newTrials = getappdata(0, 'newTrialdata');
+    
+    trialnum = str2double(file(end-6:end-4));
+    if isnan(trialnum) % is calibration trial, assume that calibration trial is the last one in the traildata table
+        trialnum = size(origTrials.eyelidpos,1);
+    end
+    
+    if isempty(newTrials)
+        newTrialTrace = [];
+    else
+        newTrialTrace = newTrials.eyelidpos(trialnum, :);
+    end
+    initThreshCheckAdjGUIDisplay(startframe, handles, rawFrames, procFrames, ...
+        eyetrace, thresh, file, origTrials.eyelidpos(trialnum, :), ...
+        newTrialTrace)
+    
+    disp('GUI setup complete')
+else
+    disp('ONLY PERMITTED TO CHANGE CONTRAST ON THE CALIBRATION TRIAL')
+end
