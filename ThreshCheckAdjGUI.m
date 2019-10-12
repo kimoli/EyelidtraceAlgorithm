@@ -782,11 +782,33 @@ for i = 1:length(files)
             pause
         end
         
-        % set up new trial table based on this trial's metadata, assumes that
-        % eyetrace is the same across all trials. also assumes 200 ms camera
-        % pretime and 5 ms frame duration
-        trials.eyelidpos(i,1:length(eyetrace)) = eyetrace;
+        if i > 1
+            prevLength = size(trials.eyelidpos,2);
+        else
+            prevLength = NaN;
+        end
+        
         maxtm = (length(eyetrace) - (0.200/0.005))*0.005;
+        
+        if ~isnan(prevLength)
+            if prevLength > length(eyetrace)
+                tempvals = nan(1, prevLength);
+                tempvals(1, 1:length(eyetrace)) = eyetrace;
+            elseif prevLength < length(eyetrace)
+                tempvals = eyetrace;
+                while size(trials.eyelidpos,2) < length(eyetrace)
+                    trials.eyelidpos = [trials.eyelidpos, nan(size(trials.eyelidpos,1),1)];
+                end
+            else
+                tempvals = eyetrace;
+            end
+        else
+            tempvals = eyetrace;
+        end
+        
+        trials.eyelidpos(i,1:length(tempvals)) = tempvals;
+        clear tempvals
+        
         trials.tm(i,1:length(eyetrace)) = [-0.2:0.005:(maxtm-0.005)];
         trials.fnames{i,1} = files(i,1).name;
         trials.c_isi(i,1) = metadata.stim.c.isi;
@@ -863,6 +885,14 @@ FEC1Frame = getappdata(0, 'FEC1Frame');
 save('reCalib.mat', 'calib', 'offsetTrial', 'FEC1Frame')
 cd(returnhere)
 disp('Saved new trialdata')
+
+amp=10;
+fs=20500; % sampling frequency
+duration=0.05;
+freq=750;
+values=0:1/fs:duration;
+a=amp*sin(2*pi* freq*values);
+sound(a);
 
 
 trialnum = str2double(file(end-6:end-4));

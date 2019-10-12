@@ -15,6 +15,7 @@ hold on
 plot(origTrial', 'Color', [0 0 0], 'LineStyle', ':')
 plot(newTrial', 'Color', [1 0 0], 'LineStyle', '--')
 a = scatter(startframe, eyetrace(startframe), 'MarkerEdgeColor', [0 0 1]);
+ylim([0 1.05])
 setappdata(0, 'framePointer', a)
 
 set(handles.FrameNumber, 'string', num2str(startframe))
