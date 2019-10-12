@@ -25,7 +25,7 @@ function varargout = ThreshCheckAdjGUI(varargin)
 
 % Edit the above text to modify the response to help ThreshCheckAdjGUI
 
-% Last Modified by GUIDE v2.5 12-Oct-2019 11:06:09
+% Last Modified by GUIDE v2.5 12-Oct-2019 11:50:17
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -887,6 +887,155 @@ for i = 1:length(files)
         pause
     end
 end
+
+
+% check if you need to recalibrate to a new baseline
+baslinecalibtrial = getappdata(0, 'baselinecalibtrial');
+baselines = nan(size(trials.eyelidpos,1),1);
+for i = 1:size(trials.eyelidpos,1)
+    baselines(i,1) = mean(trials.eyelidpos(i,1:40));
+end
+[mval, idx] = min(baselines);
+if mval<0
+    baslinecalibtrial = idx;
+    disp('FOUND BASELINE<0')
+    trials.eyelidpos = (trials.eyelidpos-mval)./(1-mval);
+    
+%     calib=processCalibTrial(rawFrames, metadata, thresh, f, w, baslinecalibtrial); % this line gets the calibration values for the day
+%     setappdata(0,'calib',calib) % save calib to the hidden figure so that it is accessible to all parts of the GUI
+%     setappdata(0,'origcalib',calib)
+%     
+%     disp('Generating new trialdata...')
+%     % cycle through all the days
+%     files = dir('*.mp4');
+%     trials = [];
+%     calib = getappdata(0, 'calib');
+%     for i = 1:length(files)
+%         disp(strcat('...processing trial', num2str(i)))
+%         
+%         try
+%             [data,metadata,encoder]=loadCompressed(files(i,1).name);
+%             corrupted = 0;
+%         catch ME
+%             disp('......VIDEO FILE CORRUPTED')
+%             corrupted = 1;
+%         end
+%         
+%         if ~corrupted
+%             % get stored info from the GUI and the hidden figure
+%             [~,~,~,f]=size(data);
+%             w = getappdata(0, 'w');
+%             thresh=str2double(get(handles.currentThresholdDisplay, 'string'));
+%             
+%             % generate the wholeframes and apply the RODs to the frames
+%             [rawFrames] = getFramesAndApplyRODs(data, metadata, f, w);
+%             if isempty(rawFrames)
+%                 disp('...rawframes empty')
+%                 pause
+%             end
+%             
+%             % change contrast based on calibration trial
+%             contCount = getappdata(0,'contrastIncCount');
+%             [m,n,c,f]=size(data);
+%             for c = 1:contCount
+%                 for t = 1:f
+%                     rawFrames{t,1} = imadjust(rawFrames{t,1});
+%                 end
+%             end
+%             
+%             % use processGivenTrial to do the rest
+%             [eyetrace, procFrames]=processGivenTrial(rawFrames, metadata, thresh, calib, f, w);
+%             if isempty(eyetrace)
+%                 disp('...eyetrace empty')
+%                 pause
+%             end
+%             
+%             if i > 1
+%                 prevLength = size(trials.eyelidpos,2);
+%             else
+%                 prevLength = NaN;
+%             end
+%             
+%             maxtm = (length(eyetrace) - (0.200/0.005))*0.005;
+%             
+%             if ~isnan(prevLength)
+%                 if prevLength > length(eyetrace)
+%                     tempvals = nan(1, prevLength);
+%                     tempvals(1, 1:length(eyetrace)) = eyetrace;
+%                 elseif prevLength < length(eyetrace)
+%                     tempvals = eyetrace;
+%                     while size(trials.eyelidpos,2) < length(eyetrace)
+%                         trials.eyelidpos = [trials.eyelidpos, nan(size(trials.eyelidpos,1),1)];
+%                     end
+%                 else
+%                     tempvals = eyetrace;
+%                 end
+%             else
+%                 tempvals = eyetrace;
+%             end
+%             
+%             trials.eyelidpos(i,1:length(tempvals)) = tempvals;
+%             clear tempvals
+%             
+%             trials.tm(i,1:length(eyetrace)) = [-0.2:0.005:(maxtm-0.005)];
+%             trials.fnames{i,1} = files(i,1).name;
+%             trials.c_isi(i,1) = metadata.stim.c.isi;
+%             trials.c_csnum(i,1) = metadata.stim.c.csnum;
+%             trials.c_csdur(i,1) = metadata.stim.c.csdur;
+%             if isfield(metadata.stim.c, 'usnum')
+%                 trials.c_usnum(i,1) = metadata.stim.c.usnum;
+%             else
+%                 trials.c_usnum(i,1) = 3; % in the TDT ephys rig, there is no usnum field since the only US possible is the puff
+%             end
+%             trials.c_usdur(i,1) = metadata.stim.c.usdur;
+%             trials.laser.delay(i,1) = metadata.stim.l.delay;
+%             if isfield(metadata.stim.l, 'dur')
+%                 trials.laser.dur(i,1) = metadata.stim.l.dur;
+%             else
+%                 trials.laser.dur(i,1) = metadata.stim.l.traindur; % tdt version calls this traindur not dur
+%             end
+%             trials.laser.amp(i,1) = metadata.stim.l.amp;
+%             if isfield(metadata.stim.l, 'freq')
+%                 trials.laser.freq(i,1) = metadata.stim.l.freq;
+%             else
+%                 trials.laser.freq(i,1) = 1;
+%             end
+%             if isfield(metadata.stim.l, 'pulsewidth')
+%                 trials.laser.pulsewidth(i,1) = metadata.stim.l.pulsewidth;
+%             else
+%                 trials.laser.pulsewidth(i,1) = metadata.stim.l.dur;
+%             end
+%             trials.trialnum = i; % assumes that matlab is going through files in alphanumeric order
+%             trials.type{i,1} = metadata.stim.type;
+%             trials.session_of_day(i,1) = str2double(files(i,1).name(end-9:end-8)); % assumes that filename uses the same format as OKim in 2018
+%             if isstruct(encoder) % will happen on calibration trial as there is no encoder structure
+%                 trials.encoder_displacement(i,1:length(encoder.displacement)) = encoder.displacement';
+%                 trials.encoder_counts(i,1:length(encoder.counts)) = encoder.counts';
+%             else % assumes encoder sampling rate is same as eyelid
+%                 trials.encoder_displacement(i,1:length(eyetrace)) = nan(1,length(eyetrace));
+%                 trials.encoder_counts(i,1:length(eyetrace)) = nan(1,length(eyetrace));
+%             end
+%             
+%             try
+%                 trials.ITI(i,1) = metadata.stim.c.ITI;
+%             catch ME
+%                 trials.ITI(i,1) = NaN;
+%             end
+%         end
+%         
+%         
+%         if i == trialnum
+%             plotMeRawFrames = rawFrames;
+%             plotMeProcFrames = procFrames;
+%         end
+%         
+%         if isempty(trials)
+%             disp('...trials empty')
+%             pause
+%         end
+%     end
+end
+setappdata(0, 'baslinecalibtrial', baslinecalibtrial)
 
 
 setappdata(0, 'newTrialdata', trials)
