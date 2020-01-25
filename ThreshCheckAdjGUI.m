@@ -25,7 +25,7 @@ function varargout = ThreshCheckAdjGUI(varargin)
 
 % Edit the above text to modify the response to help ThreshCheckAdjGUI
 
-% Last Modified by GUIDE v2.5 12-Oct-2019 11:50:17
+% Last Modified by GUIDE v2.5 24-Jan-2020 18:58:36
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -1172,3 +1172,29 @@ if strcmpi(file(end-8:end), 'calib.mp4')
 else
     disp('ONLY PERMITTED TO CHANGE CONTRAST ON THE CALIBRATION TRIAL')
 end
+
+
+% --- Executes on button press in changeROI.
+function changeROI_Callback(hObject, eventdata, handles)
+% hObject    handle to changeROI (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+metadata = getappdata(0, 'calibMetadata');
+h = imellipse(handles.rawFrame, metadata.cam.winpos);
+
+fcn = makeConstrainToRectFcn('imellipse', get(handles.rawFrame, 'XLim'), get(handles.rawFrame, 'YLim'));
+setPositionConstraintFcn(h, fcn);
+
+XY=round(wait(h));
+newWinpos = round(getPosition(h)); 
+%newWinpos(1:2) = newWinpos - metadata.cam.vidobj_ROIposition(1:2);
+newMask = createMask(h);
+
+hp = findobj(handles.rawFrame, 'Tag', 'roipatch');
+delete(hp)
+
+delete(h)
+
+handles.roipatch = patch(XY(:,1), XY(:,2), 'g', 'FaceColor', 'none', 'EdgeColor', 'g', 'Tag', 'roipatch');
+handles.XY = XY;
+
