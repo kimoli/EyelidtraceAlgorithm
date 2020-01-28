@@ -1186,9 +1186,9 @@ fcn = makeConstrainToRectFcn('imellipse', get(handles.rawFrame, 'XLim'), get(han
 setPositionConstraintFcn(h, fcn);
 
 XY=round(wait(h));
-newWinpos = round(getPosition(h)); 
+metadata.cam.winpos = round(getPosition(h)); 
 %newWinpos(1:2) = newWinpos - metadata.cam.vidobj_ROIposition(1:2);
-newMask = createMask(h);
+metadata.cam.mask = createMask(h);
 
 hp = findobj(handles.rawFrame, 'Tag', 'roipatch');
 delete(hp)
@@ -1197,4 +1197,6 @@ delete(h)
 
 handles.roipatch = patch(XY(:,1), XY(:,2), 'g', 'FaceColor', 'none', 'EdgeColor', 'g', 'Tag', 'roipatch');
 handles.XY = XY;
+
+setappdata('calibMetadata', metadata)
 
